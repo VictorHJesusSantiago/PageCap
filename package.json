@@ -1,0 +1,26 @@
+{
+  "name": "pagecap",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "packages/core",
+    "packages/ui",
+    "packages/electron"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev:engine\" \"npm run dev:ui\" \"npm run dev:electron\"",
+    "dev:engine": "cd engine && uvicorn api:app --host 127.0.0.1 --port 8765 --reload",
+    "dev:ui": "npm run dev --workspace=packages/ui",
+    "dev:electron": "npm run dev --workspace=packages/electron",
+    "dev:web": "concurrently \"npm run dev:engine\" \"npm run dev:ui\"",
+    "build": "npm run build --workspace=packages/core && npm run build --workspace=packages/ui && npm run build --workspace=packages/electron",
+    "build:ui": "npm run build --workspace=packages/ui",
+    "build:electron": "npm run build --workspace=packages/electron",
+    "install:python": "cd engine && pip install -r requirements.txt && playwright install chromium",
+    "lint": "npm run lint --workspace=packages/core && npm run lint --workspace=packages/ui"
+  },
+  "devDependencies": {
+    "concurrently": "^9.0.0",
+    "typescript": "^5.6.0"
+  }
+}
