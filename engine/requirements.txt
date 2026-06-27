@@ -1,0 +1,53 @@
+# ── Core API / server ─────────────────────────────────────────────────────────
+fastapi>=0.115.0
+uvicorn[standard]>=0.30.0
+pydantic>=2.9.0
+python-multipart>=0.0.12
+websockets>=13.0
+
+# ── Browser automation ────────────────────────────────────────────────────────
+playwright>=1.47.0
+
+# ── Media download (1800+ sites) ──────────────────────────────────────────────
+yt-dlp>=2024.9.0
+
+# ── HTTP / networking ─────────────────────────────────────────────────────────
+requests>=2.32.0
+httpx>=0.27.0
+aiohttp>=3.10.0
+aiofiles>=24.1.0
+
+# ── HTML parsing ──────────────────────────────────────────────────────────────
+beautifulsoup4>=4.12.0
+lxml>=5.3.0
+
+# ── CLI ───────────────────────────────────────────────────────────────────────
+typer[all]>=0.12.0
+rich>=13.8.0
+
+# ── Auth: browser cookies ─────────────────────────────────────────────────────
+browser-cookie3>=0.19.1
+
+# ── Image conversion ──────────────────────────────────────────────────────────
+Pillow>=10.4.0
+pillow-heif>=0.18.0        # HEIC/HEIF support
+pillow-avif-plugin>=1.4.0  # AVIF support
+cairosvg>=2.7.0            # SVG → PNG/PDF
+rawpy>=0.23.0              # Camera RAW (CR2, NEF, ARW, etc.)
+
+# ── Document conversion ───────────────────────────────────────────────────────
+pdfminer.six>=20221105     # PDF → text fallback (pandoc is external)
+
+# ── Data/tabular conversion ───────────────────────────────────────────────────
+pandas>=2.2.0
+openpyxl>=3.1.0            # xlsx read/write
+odfpy>=1.4.1               # ods read/write
+pyarrow>=17.0.0            # parquet + feather/arrow
+fastavro>=1.9.0            # avro read/write
+
+# ── Font conversion ───────────────────────────────────────────────────────────
+fonttools>=4.53.0
+brotli>=1.1.0              # woff2 compression
+
+# ── Subtitle conversion ───────────────────────────────────────────────────────
+pysubs2>=1.7.0

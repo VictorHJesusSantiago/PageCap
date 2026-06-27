@@ -1,0 +1,51 @@
+{
+  "name": "@pagecap/electron",
+  "version": "1.0.0",
+  "private": true,
+  "main": "dist/main.js",
+  "scripts": {
+    "dev": "concurrently \"tsc --watch\" \"wait-on dist/main.js && electron .\"",
+    "build": "tsc",
+    "pack": "npm run build && electron-builder --dir",
+    "dist": "npm run build && electron-builder"
+  },
+  "dependencies": {
+    "@pagecap/core": "*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "concurrently": "^9.0.0",
+    "electron": "^32.0.0",
+    "electron-builder": "^25.0.0",
+    "typescript": "^5.6.0",
+    "wait-on": "^8.0.0"
+  },
+  "build": {
+    "appId": "com.pagecap.app",
+    "productName": "PageCap",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "node_modules/**/*",
+      "../../packages/ui/dist/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "../../engine",
+        "to": "engine",
+        "filter": ["**/*", "!__pycache__", "!*.pyc", "!downloads"]
+      }
+    ],
+    "win": {
+      "target": "nsis"
+    },
+    "mac": {
+      "target": "dmg"
+    },
+    "linux": {
+      "target": "AppImage"
+    }
+  }
+}
