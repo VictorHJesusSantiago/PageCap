@@ -6,7 +6,7 @@ user to solve the challenge, then continues automatically.
 from __future__ import annotations
 
 import asyncio
-from typing import Optional
+from typing import Callable, Optional
 
 from playwright.async_api import Page
 
@@ -58,7 +58,7 @@ async def apply_credentials(
     password: str,
     manual_captcha: bool = False,
     captcha_timeout: int = 120,
-    on_captcha_detected: Optional[callable] = None,
+    on_captcha_detected: Optional[Callable[[str], None]] = None,
 ) -> bool:
     """
     Navigate to URL and attempt automated login.
@@ -107,15 +107,15 @@ async def apply_credentials(
     except Exception:
         pass
 
-    # Detect CAPTCHA / 2FA challenges on resulting page
-    captcha_indicators = [
-        "captcha", "recaptcha", "hcaptcha", "turnstile",
-        "verify you are human", "prove you're not a robot",
-        "two-factor", "2fa", "verification code", "authenticator",
-        "código de verificação", "verificação em duas etapas",
+    # Detect CAPTCHA / 2FA challenges on resulting page via DOM selectors
+    # (avoid full-page text scan which produces false positives from page copy/scripts)
+    _challenge_selectors = [
+        "iframe[src*='recaptcha']", "iframe[src*='hcaptcha']",
+        ".g-recaptcha", ".h-captcha",
+        "input[name='cf-turnstile-response']",
+        "input[name='otp']", "input[autocomplete='one-time-code']",
     ]
-    page_text = (await page.content()).lower()
-    has_challenge = any(ind in page_text for ind in captcha_indicators)
+    has_challenge = any(await page.query_selector(sel) for sel in _challenge_selectors)
 
     if has_challenge and manual_captcha:
         if on_captcha_detected:
@@ -142,8 +142,9 @@ async def _find_first(page: Page, selectors: list[str]):
 async def _wait_for_navigation(page: Page, timeout: int):
     """Wait for user to manually navigate (URL change or load)."""
     initial_url = page.url
-    deadline = asyncio.get_event_loop().time() + timeout
-    while asyncio.get_event_loop().time() < deadline:
+    loop = asyncio.get_running_loop()
+    deadline = loop.time() + timeout
+    while loop.time() < deadline:
         await asyncio.sleep(2)
         if page.url != initial_url:
             try:
@@ -155,13 +156,18 @@ async def _wait_for_navigation(page: Page, timeout: int):
 
 async def _wait_for_challenge_done(page: Page, timeout: int):
     """Wait until CAPTCHA/2FA indicators disappear from the page."""
-    captcha_indicators = ["captcha", "recaptcha", "hcaptcha", "two-factor", "2fa", "verification code"]
-    deadline = asyncio.get_event_loop().time() + timeout
-    while asyncio.get_event_loop().time() < deadline:
+    captcha_selectors = [
+        "iframe[src*='recaptcha']", "iframe[src*='hcaptcha']",
+        ".g-recaptcha", ".h-captcha",
+        "input[name='cf-turnstile-response']",
+    ]
+    loop = asyncio.get_running_loop()
+    deadline = loop.time() + timeout
+    while loop.time() < deadline:
         await asyncio.sleep(2)
         try:
-            text = (await page.content()).lower()
-            if not any(ind in text for ind in captcha_indicators):
+            challenge_present = any(await page.query_selector(sel) for sel in captcha_selectors)
+            if not challenge_present:
                 await page.wait_for_load_state("networkidle", timeout=5000)
                 return
         except Exception:

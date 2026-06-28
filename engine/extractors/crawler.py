@@ -181,6 +181,7 @@ async def crawl_assets(
                     net_page, request.url, output_dir, list(want),
                     cookies=pw_cookies,
                     wait_seconds=request.network_wait,
+                    max_files=request.max_files,
                 ):
                     _add(f)
                     _emit(f"Rede: {f.filename}", 45)

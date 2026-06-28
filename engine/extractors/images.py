@@ -12,6 +12,7 @@ import httpx
 from playwright.async_api import Page
 
 from models import ExtractedFile
+from utils import unique_filename
 
 
 _IMAGE_EXTS = {".jpg", ".jpeg", ".png", ".gif", ".webp", ".svg", ".avif", ".bmp", ".ico"}
@@ -97,7 +98,7 @@ async def extract_images(
 
                 stem = Path(parsed.path).stem[:60] or f"image_{count}"
                 stem = re.sub(r'[^\w\-]', '_', stem)
-                filename = _unique_name(stem + guessed_ext, seen_names)
+                filename = unique_filename(stem + guessed_ext, seen_names)
                 seen_names.add(filename)
 
                 dest = output_dir / filename
@@ -115,12 +116,3 @@ async def extract_images(
                 continue
 
 
-def _unique_name(name: str, seen: set[str]) -> str:
-    if name not in seen:
-        return name
-    stem = Path(name).stem
-    suffix = Path(name).suffix
-    i = 1
-    while f"{stem}_{i}{suffix}" in seen:
-        i += 1
-    return f"{stem}_{i}{suffix}"
