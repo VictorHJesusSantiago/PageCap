@@ -18,6 +18,7 @@ from playwright.async_api import Page
 
 from models import ExtractedFile
 from file_types import ALL_EXTENSIONS, mime_of, get_info
+from utils import unique_filename
 
 # HTML attributes that commonly contain resource URLs
 _URL_ATTRS = [
@@ -184,7 +185,7 @@ async def extract_universal(
                     break
 
             stem = re.sub(r'[^\w\-]', '_', Path(path_no_qs).stem)[:80] or "file"
-            filename = _unique(stem + ext, seen_filenames)
+            filename = unique_filename(stem + ext, seen_filenames)
 
             try:
                 # HEAD first — check size / availability
@@ -227,12 +228,3 @@ async def extract_universal(
                 continue
 
 
-def _unique(name: str, seen: set[str]) -> str:
-    if name not in seen:
-        return name
-    stem = Path(name).stem
-    suffix = Path(name).suffix
-    i = 1
-    while f"{stem}_{i}{suffix}" in seen:
-        i += 1
-    return f"{stem}_{i}{suffix}"

@@ -21,6 +21,7 @@ import httpx
 from playwright.async_api import Page, Request, Route
 
 from models import ExtractedFile
+from utils import unique_filename
 
 
 _MEDIA_EXTS = {
@@ -50,6 +51,7 @@ async def extract_via_network(
     content_types: list[str],
     cookies: list[dict] | None = None,
     wait_seconds: int = 12,
+    max_files: int = 500,
 ) -> AsyncGenerator[ExtractedFile, None]:
     """
     Navigate to the URL, intercept every network request, collect media URLs,
@@ -115,9 +117,12 @@ async def extract_via_network(
 
     seen: set[str] = set()
     playlists: list[str] = []
+    count = 0
 
     async with httpx.AsyncClient(headers=headers, follow_redirects=True, timeout=120) as client:
         for media_url, mime in all_urls.items():
+            if count >= max_files:
+                break
             parsed = urlparse(media_url)
             if parsed.scheme not in ("http", "https"):
                 continue
@@ -140,7 +145,7 @@ async def extract_via_network(
                 continue
 
             stem = re.sub(r'[^\w\-]', '_', Path(parsed.path).stem)[:60] or "media"
-            filename = _unique(stem + ext, seen)
+            filename = unique_filename(stem + ext, seen)
             seen.add(filename)
             dest = output_dir / filename
 
@@ -159,6 +164,7 @@ async def extract_via_network(
                     dest.unlink(missing_ok=True)
                     continue
 
+                count += 1
                 yield ExtractedFile(
                     filename=filename,
                     url=media_url,
@@ -184,7 +190,7 @@ async def extract_via_network(
 
         out_ext = ".mp3" if is_audio_pl else ".mp4"
         stem = re.sub(r'[^\w\-]', '_', Path(parsed.path).stem)[:60] or "stream"
-        filename = _unique(stem + out_ext, seen)
+        filename = unique_filename(stem + out_ext, seen)
         seen.add(filename)
         dest = output_dir / filename
 
@@ -226,12 +232,3 @@ async def _ffmpeg_download(url: str, dest: Path, headers: dict[str, str]) -> boo
         return False
 
 
-def _unique(name: str, seen: set[str]) -> str:
-    if name not in seen:
-        return name
-    stem = Path(name).stem
-    suffix = Path(name).suffix
-    i = 1
-    while f"{stem}_{i}{suffix}" in seen:
-        i += 1
-    return f"{stem}_{i}{suffix}"

@@ -62,6 +62,7 @@ async def extract_media(
         )
 
         downloaded_files: list[Path] = []
+        pre_existing = {f for f in output_dir.glob(f"*.{ext}")}
         async for line in proc.stdout:
             try:
                 info = json.loads(line.decode())
@@ -84,16 +85,17 @@ async def extract_media(
 
         await proc.wait()
 
-        # Fallback: scan output dir for new files matching the ext
+        # Fallback: yield only files that appeared during this yt-dlp run
         if not downloaded_files:
             for f in output_dir.glob(f"*.{ext}"):
-                yield ExtractedFile(
-                    filename=f.name,
-                    url=url,
-                    content_type="video/mp4" if ext == "mp4" else "audio/mpeg",
-                    size_bytes=f.stat().st_size,
-                    local_path=str(f),
-                )
+                if f not in pre_existing:
+                    yield ExtractedFile(
+                        filename=f.name,
+                        url=url,
+                        content_type="video/mp4" if ext == "mp4" else "audio/mpeg",
+                        size_bytes=f.stat().st_size,
+                        local_path=str(f),
+                    )
 
 
 def _safe_name(s: str) -> str:

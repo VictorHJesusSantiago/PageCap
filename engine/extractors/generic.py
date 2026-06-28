@@ -15,6 +15,7 @@ import httpx
 from playwright.async_api import Page
 
 from models import ExtractedFile
+from utils import unique_filename
 
 
 # Extensions we actively scan for beyond the other extractors
@@ -92,7 +93,7 @@ async def extract_generic_media(
             parsed_path = Path(urlparse(media_url).path)
             ext = parsed_path.suffix.lower()
             stem = re.sub(r'[^\w\-]', '_', parsed_path.stem)[:60] or "media"
-            filename = _unique(stem + ext, seen)
+            filename = unique_filename(stem + ext, seen)
             seen.add(filename)
 
             try:
@@ -118,12 +119,3 @@ async def extract_generic_media(
                 continue
 
 
-def _unique(name: str, seen: set[str]) -> str:
-    if name not in seen:
-        return name
-    stem = Path(name).stem
-    suffix = Path(name).suffix
-    i = 1
-    while f"{stem}_{i}{suffix}" in seen:
-        i += 1
-    return f"{stem}_{i}{suffix}"
