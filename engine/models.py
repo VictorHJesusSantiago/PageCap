@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from enum import Enum
 from typing import Optional
-from pydantic import BaseModel
+from urllib.parse import urlparse
+
+from pydantic import BaseModel, field_validator
 
 
 class ContentType(str, Enum):
@@ -61,6 +63,15 @@ class ExtractionRequest(BaseModel):
     # Conversion: after download, convert each file to this extension
     # e.g. ".mp3" to convert all audio; ".pdf" to convert all docs; "" = no conversion
     convert_to: Optional[str] = None
+
+    @field_validator("url")
+    @classmethod
+    def _validate_url(cls, v: str) -> str:
+        v = v.strip()
+        parsed = urlparse(v)
+        if parsed.scheme not in ("http", "https") or not parsed.netloc:
+            raise ValueError("URL deve começar com http:// ou https://")
+        return v
 
 
 class ExtractedFile(BaseModel):

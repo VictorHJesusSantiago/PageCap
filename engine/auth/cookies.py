@@ -95,7 +95,12 @@ async def load_cookies(
 ) -> int:
     """Add cookies to a Playwright context. Returns number of cookies added."""
     parsed = urlparse(url)
-    domain = parsed.netloc.lstrip("www.")
+    # netloc may include a port and a leading "www." — strip both safely.
+    # NB: str.lstrip("www.") strips *characters*, not the prefix, so it would
+    # corrupt domains like "world.com" → "orld.com". Remove the prefix explicitly.
+    domain = parsed.netloc.split("@")[-1].split(":")[0]
+    if domain.startswith("www."):
+        domain = domain[len("www."):]
 
     cookies: list[dict] = []
 

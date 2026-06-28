@@ -2,28 +2,32 @@
 from __future__ import annotations
 
 import asyncio
-import json
 import os
 import uuid
 from pathlib import Path
-from typing import Optional
 
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
-from fastapi.staticfiles import StaticFiles
 
 from models import ExtractionRequest, JobState, JobStatus
 from extractors.crawler import crawl_assets
 
 app = FastAPI(title="PageCap API", version="1.0.0")
 
+# The engine binds to 127.0.0.1, but any website the user browses could still
+# POST to the local API unless we restrict CORS. We only trust localhost dev
+# origins and the packaged Electron renderer (file:// → Origin "null").
+# Extra origins can be added via PAGECAP_CORS_ORIGINS (comma-separated).
+_EXTRA_ORIGINS = [o.strip() for o in os.getenv("PAGECAP_CORS_ORIGINS", "").split(",") if o.strip()]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=["null", *_EXTRA_ORIGINS],
+    allow_origin_regex=r"^http://(localhost|127\.0\.0\.1)(:\d+)?$",
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "DELETE"],
+    allow_headers=["Content-Type"],
 )
 
 # In-memory job store
@@ -92,7 +96,7 @@ async def cancel_job(job_id: str):
     job = _jobs.get(job_id)
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
-    if job.status == JobStatus.running:
+    if job.status in (JobStatus.queued, JobStatus.running, JobStatus.waiting_captcha):
         job.status = JobStatus.cancelled
     return {"cancelled": True}
 
@@ -132,6 +136,9 @@ async def websocket_progress(websocket: WebSocket, job_id: str):
 
 
 async def _run_job(request: ExtractionRequest, job: JobState):
+    if job.status == JobStatus.cancelled:
+        await _broadcast(job)
+        return
     job.status = JobStatus.running
     await _broadcast(job)
 
