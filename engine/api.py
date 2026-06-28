@@ -8,7 +8,7 @@ from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 
 from models import ExtractionRequest, JobState, JobStatus
 from extractors.crawler import crawl_assets
@@ -19,7 +19,10 @@ app = FastAPI(title="PageCap API", version="1.0.0")
 # POST to the local API unless we restrict CORS. We only trust localhost dev
 # origins and the packaged Electron renderer (file:// → Origin "null").
 # Extra origins can be added via PAGECAP_CORS_ORIGINS (comma-separated).
-_EXTRA_ORIGINS = [o.strip() for o in os.getenv("PAGECAP_CORS_ORIGINS", "").split(",") if o.strip()]
+_EXTRA_ORIGINS = [
+    o for o in (o.strip() for o in os.getenv("PAGECAP_CORS_ORIGINS", "").split(","))
+    if o and o != "*"  # never allow a bare wildcard — it would open CORS to any origin
+]
 
 app.add_middleware(
     CORSMiddleware,
@@ -55,7 +58,7 @@ async def start_extraction(request: ExtractionRequest):
 
     asyncio.create_task(_run_job(request, job))
 
-    return {"job_id": job_id, "status": "queued"}
+    return JSONResponse(status_code=202, content={"job_id": job_id, "status": "queued"})
 
 
 @app.get("/jobs/{job_id}")
@@ -113,18 +116,17 @@ async def websocket_progress(websocket: WebSocket, job_id: str):
         _ws_connections[job_id] = []
     _ws_connections[job_id].append(websocket)
 
-    # Send current state immediately
+    # Send current state immediately so the client doesn't miss events that
+    # fired before the WebSocket was opened.
     job = _jobs.get(job_id)
     if job:
         await websocket.send_text(job.model_dump_json())
 
+    # All subsequent updates are pushed by _broadcast — we just keep the
+    # connection alive until the client disconnects.
     try:
         while True:
-            await asyncio.sleep(0.5)
-            job = _jobs.get(job_id)
-            if job and job.status in (JobStatus.done, JobStatus.error, JobStatus.cancelled):
-                await websocket.send_text(job.model_dump_json())
-                break
+            await websocket.receive_text()
     except WebSocketDisconnect:
         pass
     finally:

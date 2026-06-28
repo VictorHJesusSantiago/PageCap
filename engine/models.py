@@ -51,9 +51,7 @@ class ExtractionRequest(BaseModel):
     target_extensions: list[str] = []
     auth: AuthConfig = AuthConfig()
     output_dir: Optional[str] = None
-    max_depth: int = 1
     max_files: int = 500
-    follow_links: bool = False
     quality: str = "best"
     # Network interception: wait N seconds for async media requests to fire
     network_wait: int = 12
