@@ -18,7 +18,7 @@ from playwright.async_api import Page
 
 from models import ExtractedFile
 from file_types import ALL_EXTENSIONS, mime_of, get_info
-from utils import unique_filename
+from utils import unique_filename, build_cookie_header
 
 # HTML attributes that commonly contain resource URLs
 _URL_ATTRS = [
@@ -159,7 +159,7 @@ async def extract_universal(
     # ── Download ──────────────────────────────────────────────────────────────
     headers: dict[str, str] = {"Referer": url}
     if cookies:
-        headers["Cookie"] = "; ".join(f"{c['name']}={c['value']}" for c in cookies)
+        headers["Cookie"] = build_cookie_header(cookies)
 
     seen_filenames: set[str] = set(already_seen)
     count = 0

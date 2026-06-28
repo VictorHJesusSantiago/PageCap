@@ -22,6 +22,7 @@ export function useExtraction(): UseExtractionResult {
   const currentJobId = useRef<string | null>(null);
 
   const start = useCallback(async (req: ExtractionRequest) => {
+    if (phase !== "idle") return;
     setPhase("starting");
     setJob(null);
 
@@ -48,7 +49,7 @@ export function useExtraction(): UseExtractionResult {
         status: "error",
       }));
     }
-  }, []);
+  }, [phase]);
 
   const cancel = useCallback(() => {
     if (currentJobId.current) {

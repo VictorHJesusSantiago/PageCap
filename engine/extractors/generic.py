@@ -15,7 +15,7 @@ import httpx
 from playwright.async_api import Page
 
 from models import ExtractedFile
-from utils import unique_filename
+from utils import unique_filename, build_cookie_header
 
 
 # Extensions we actively scan for beyond the other extractors
@@ -84,7 +84,7 @@ async def extract_generic_media(
 
     headers = {"Referer": url}
     if cookies:
-        headers["Cookie"] = "; ".join(f"{c['name']}={c['value']}" for c in cookies)
+        headers["Cookie"] = build_cookie_header(cookies)
 
     seen: set[str] = set()
 

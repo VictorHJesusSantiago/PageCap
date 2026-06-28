@@ -21,7 +21,7 @@ import httpx
 from playwright.async_api import Page, Request, Route
 
 from models import ExtractedFile
-from utils import unique_filename
+from utils import unique_filename, build_cookie_header
 
 
 _MEDIA_EXTS = {
@@ -113,7 +113,7 @@ async def extract_via_network(
     # Build download headers
     headers: dict[str, str] = {"Referer": url}
     if cookies:
-        headers["Cookie"] = "; ".join(f"{c['name']}={c['value']}" for c in cookies)
+        headers["Cookie"] = build_cookie_header(cookies)
 
     seen: set[str] = set()
     playlists: list[str] = []

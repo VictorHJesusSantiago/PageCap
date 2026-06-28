@@ -43,9 +43,7 @@ export interface ExtractionRequest {
   content_types?: ContentType[];
   auth?: AuthConfig;
   output_dir?: string;
-  max_depth?: number;
   max_files?: number;
-  follow_links?: boolean;
   quality?: "best" | "worst";
   network_wait?: number;
   screen_record?: boolean;
