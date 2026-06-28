@@ -93,6 +93,9 @@ async def crawl_assets(
         if on_progress:
             on_progress(job)
 
+    def _cancelled() -> bool:
+        return job.status == JobStatus.cancelled
+
     _emit("Iniciando navegador...", 2)
 
     headless = not request.auth.manual_captcha
@@ -158,7 +161,7 @@ async def crawl_assets(
                 _emit(f"PDF falhou: {e}", 18)
 
         # ── 2. yt-dlp (plataformas conhecidas) ───────────────────────────────
-        if want_media:
+        if want_media and not _cancelled():
             _emit("Tentando yt-dlp (YouTube, Vimeo, TikTok, etc.)...", 20)
             try:
                 async for f in extract_media(
@@ -170,7 +173,7 @@ async def crawl_assets(
                 _emit(f"yt-dlp: {e}", 28)
 
         # ── 3. Interceptação de rede ──────────────────────────────────────────
-        if want_media:
+        if want_media and not _cancelled():
             _emit("Interceptando requisições de mídia...", 30)
             try:
                 net_page = await context.new_page()
@@ -186,7 +189,7 @@ async def crawl_assets(
                 _emit(f"Interceptação: {e}", 45)
 
         # ── 4. DOM scan (tags diretas) ────────────────────────────────────────
-        if want_media:
+        if want_media and not _cancelled():
             _emit("Escaneando tags de mídia no DOM...", 47)
             try:
                 async for f in extract_generic_media(
@@ -197,25 +200,26 @@ async def crawl_assets(
                 _emit(f"DOM scan: {e}", 50)
 
         # ── 5. Scanner universal (todos os 150+ tipos) ────────────────────────
-        _emit("Scanner universal de arquivos...", 52)
-        try:
-            uni_page = await context.new_page()
-            async for f in extract_universal(
-                uni_page, request.url, output_dir,
-                wanted_categories=wanted_categories if not want_all else None,
-                wanted_extensions=wanted_extensions,
-                cookies=pw_cookies,
-                max_files=request.max_files,
-                already_seen=set(seen_filenames),
-            ):
-                _add(f)
-                _emit(f"Universal: {f.filename}", 80)
-            await uni_page.close()
-        except Exception as e:
-            _emit(f"Scanner universal: {e}", 80)
+        if not _cancelled():
+            _emit("Scanner universal de arquivos...", 52)
+            try:
+                uni_page = await context.new_page()
+                async for f in extract_universal(
+                    uni_page, request.url, output_dir,
+                    wanted_categories=wanted_categories if not want_all else None,
+                    wanted_extensions=wanted_extensions,
+                    cookies=pw_cookies,
+                    max_files=request.max_files,
+                    already_seen=set(seen_filenames),
+                ):
+                    _add(f)
+                    _emit(f"Universal: {f.filename}", 80)
+                await uni_page.close()
+            except Exception as e:
+                _emit(f"Scanner universal: {e}", 80)
 
         # ── 6. Gravação de tela ───────────────────────────────────────────────
-        if request.screen_record and want_media:
+        if request.screen_record and want_media and not _cancelled():
             _emit(f"Gravando tela por {request.screen_record_duration}s...", 82)
             try:
                 async for f in extract_screen_record(
@@ -230,7 +234,7 @@ async def crawl_assets(
         await browser.close()
 
     # ── 7. Conversão pós-download ─────────────────────────────────────────────
-    if request.convert_to and files:
+    if request.convert_to and files and not _cancelled():
         target_ext = request.convert_to if request.convert_to.startswith(".") else f".{request.convert_to}"
         _emit(f"Convertendo arquivos para {target_ext}...", 92)
         converted_dir = output_dir / "converted"
@@ -254,9 +258,12 @@ async def crawl_assets(
             if on_progress:
                 on_progress(job)
 
-    job.status = JobStatus.done
-    job.progress = 100
-    job.message = f"Concluído. {len(files)} arquivo(s) extraído(s)."
+    if _cancelled():
+        job.message = f"Cancelado. {len(files)} arquivo(s) extraído(s) antes do cancelamento."
+    else:
+        job.status = JobStatus.done
+        job.progress = 100
+        job.message = f"Concluído. {len(files)} arquivo(s) extraído(s)."
     if on_progress:
         on_progress(job)
 

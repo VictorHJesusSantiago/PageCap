@@ -119,11 +119,12 @@ async def extract_universal(
 
     # ── Filter by extension or category ─────────────────────────────────────
     def _should_download(candidate: str) -> bool:
-        if candidate.startswith("data:") or candidate.startswith("blob:"):
+        parsed = urlparse(candidate)
+        # Only fetch real remote resources — never data:/blob:/file:/etc.
+        if parsed.scheme not in ("http", "https"):
             return False
         if _SKIP_RE.search(candidate):
             return False
-        parsed = urlparse(candidate)
         # Strip query strings from path for extension detection
         path = parsed.path.split("?")[0]
         ext = Path(path).suffix.lower()
@@ -134,17 +135,14 @@ async def extract_universal(
                 ext = multi
                 break
 
-        if ext not in ALL_EXTENSIONS:
-            # Try by MIME from intercepted responses
+        if ext in ALL_EXTENSIONS:
+            info = get_info(ext)
+        else:
+            # Unknown/absent extension — fall back to the intercepted MIME type.
             ct = intercepted.get(candidate, "")
-            if ct:
-                mime_base = ct.split(";")[0].strip()
-                if not get_info(mime_base):
-                    return False
-            else:
-                return False
+            mime_base = ct.split(";")[0].strip() if ct else ""
+            info = get_info(mime_base) if mime_base else None
 
-        info = get_info(ext)
         if info is None:
             return False
 

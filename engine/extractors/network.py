@@ -119,6 +119,8 @@ async def extract_via_network(
     async with httpx.AsyncClient(headers=headers, follow_redirects=True, timeout=120) as client:
         for media_url, mime in all_urls.items():
             parsed = urlparse(media_url)
+            if parsed.scheme not in ("http", "https"):
+                continue
             ext = Path(parsed.path.split("?")[0]).suffix.lower()
 
             # Collect playlists for later ffmpeg mux
@@ -170,6 +172,8 @@ async def extract_via_network(
     # Download and mux HLS/DASH playlists with ffmpeg
     for pl_url in playlists:
         parsed = urlparse(pl_url)
+        if parsed.scheme not in ("http", "https"):
+            continue
         ext = Path(parsed.path.split("?")[0]).suffix.lower()
         is_audio_pl = "audio" in pl_url.lower()
 
