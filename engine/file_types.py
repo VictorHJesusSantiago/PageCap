@@ -169,7 +169,8 @@ _code = {
     ".html": ("text/html","HTML"), ".htm": ("text/html","HTML"),
     ".css":  ("text/css","CSS"),
     ".js":   ("text/javascript","JavaScript"), ".mjs": ("text/javascript","JS Module"),
-    ".ts":   ("text/typescript","TypeScript"),
+    # .ts is intentionally absent: it is registered as MPEG-TS video above.
+    # TypeScript source files are not downloadable web assets.
     ".jsx":  ("text/jsx","JSX"), ".tsx": ("text/tsx","TSX"),
     ".json": ("application/json","JSON"),
     ".xml":  ("application/xml","XML"),
@@ -369,9 +370,9 @@ def get_info(ext_or_mime: str) -> Optional[FileTypeInfo]:
     """Look up FileTypeInfo by extension (with dot) or MIME type."""
     if ext_or_mime in REGISTRY:
         return REGISTRY[ext_or_mime]
-    for _ext, info in REGISTRY.items():
-        if info.mime == ext_or_mime:
-            return info
+    exts = MIME_TO_EXTS.get(ext_or_mime)
+    if exts:
+        return REGISTRY.get(exts[0])
     return None
 
 

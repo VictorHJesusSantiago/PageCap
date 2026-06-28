@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import asyncio
 from pathlib import Path
-from typing import Optional
+from typing import Callable, Optional
 
 from file_types import get_info, conversions_for, category_of
 
@@ -50,12 +50,14 @@ async def convert_file(
     if src_ext == target_ext:
         return src
 
-    # Validate that this conversion is registered
+    # Validate that this conversion is registered.
+    # An empty allowed list means the type declares no conversions — always reject.
     allowed = conversions_for(src_ext)
-    if allowed and target_ext not in allowed:
+    if target_ext not in allowed:
+        supported = ', '.join(allowed) if allowed else "nenhum"
         raise ConversionError(
             f"Conversão {src_ext} → {target_ext} não é suportada. "
-            f"Destinos válidos: {', '.join(allowed)}"
+            f"Destinos válidos: {supported}"
         )
 
     cat = category_of(src_ext)
@@ -110,7 +112,7 @@ async def batch_convert(
     files: list[Path],
     target_ext: str,
     output_dir: Optional[Path] = None,
-    on_done: Optional[callable] = None,
+    on_done: Optional[Callable[[tuple[Path, Path | Exception]], None]] = None,
 ) -> list[tuple[Path, Path | Exception]]:
     """
     Convert multiple files to the same target format concurrently (max 4 at once).
