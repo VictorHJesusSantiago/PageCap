@@ -11,6 +11,9 @@ __pycache__/
 .pytest_cache/
 engine/downloads/
 engine/.jobs/
+engine/pagecap.db
+engine/pagecap.db-wal
+engine/pagecap.db-shm
 packages/ui/dist/
 packages/electron/dist/
 packages/electron/out/
