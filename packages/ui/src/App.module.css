@@ -9,7 +9,23 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 48px 24px 24px;
+  padding: 24px 24px 24px;
+  gap: 8px;
+}
+
+.headerBar {
+  width: 100%;
+  max-width: 760px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 24px;
+}
+
+.headerActions {
+  display: flex;
+  align-items: center;
   gap: 8px;
 }
 

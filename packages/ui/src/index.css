@@ -4,7 +4,8 @@
   padding: 0;
 }
 
-:root {
+:root,
+:root[data-theme="dark"] {
   --bg: #0f1117;
   --bg-card: #1a1d2e;
   --bg-input: #12151f;
@@ -24,6 +25,23 @@
   --radius-sm: 6px;
 }
 
+:root[data-theme="light"] {
+  --bg: #f5f6fa;
+  --bg-card: #ffffff;
+  --bg-input: #f0f1f6;
+  --border: #dcdfe8;
+  --accent: #5a52e0;
+  --accent-hover: #4841c9;
+  --accent-dim: rgba(90, 82, 224, 0.1);
+  --text: #1c1e2b;
+  --text-muted: #6b6f85;
+  --text-dim: #9a9db0;
+  --success: #16a34a;
+  --error: #dc2626;
+  --warning: #d97706;
+  --info: #2563eb;
+}
+
 html, body {
   height: 100%;
   background: var(--bg);
@@ -32,6 +50,7 @@ html, body {
   font-size: 14px;
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
+  transition: background 0.15s ease, color 0.15s ease;
 }
 
 #root {
@@ -48,6 +67,8 @@ a {
 button {
   font-family: inherit;
   cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
 }
 
 input, select, textarea {
