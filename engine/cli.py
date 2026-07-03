@@ -94,6 +94,11 @@ def extract(
     extensions: Optional[str] = typer.Option(None, "--ext", "-e", help="Extensões específicas separadas por vírgula: .pdf,.mp3,.xlsx"),
     convert_to: Optional[str] = typer.Option(None, "--convert", help="Converter arquivos baixados para este formato: ex. .mp3, .pdf, .png"),
     list_types: bool = typer.Option(False, "--list-types", help="Lista todos os tipos de arquivos suportados e saí"),
+    additional_url: list[str] = typer.Option([], "--additional-url", help="URL extra a extrair no mesmo job (repetível — batch de várias páginas)"),
+    headless: Optional[bool] = typer.Option(None, "--headless/--no-headless", help="Força o browser headless (ou visível). Padrão: headless, exceto com --captcha"),
+    follow_links: bool = typer.Option(False, "--follow-links", help="Segue links do mesmo domínio (crawling recursivo)"),
+    max_depth: int = typer.Option(1, "--max-depth", help="Profundidade máxima do crawling recursivo"),
+    max_pages: int = typer.Option(20, "--max-pages", help="Máximo de páginas visitadas no crawling"),
 ):
     """
     [bold]PageCap[/bold] — Extrai qualquer tipo de arquivo de uma página web.
@@ -156,6 +161,11 @@ def extract(
         screen_record=screen_record,
         screen_record_duration=screen_duration,
         convert_to=convert_to,
+        additional_urls=list(additional_url),
+        headless=headless,
+        follow_links=follow_links,
+        max_depth=max_depth,
+        max_pages=max_pages,
     )
 
     import uuid
