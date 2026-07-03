@@ -127,3 +127,105 @@
   color: var(--accent);
   font-weight: 500;
 }
+
+.fileFeed {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 160px;
+  overflow-y: auto;
+  border-top: 1px solid var(--border);
+  padding-top: 8px;
+}
+
+.fileFeedItem {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  color: var(--text-muted);
+  animation: fadeIn 0.25s ease;
+}
+
+.fileFeedCheck {
+  color: var(--success);
+  flex-shrink: 0;
+}
+
+.fileFeedName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.paused {
+  color: var(--warning);
+}
+
+.currentFile {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.currentFileName {
+  font-size: 11px;
+  color: var(--text-muted);
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.currentFileTrack {
+  flex: 1;
+  height: 3px;
+  background: var(--bg-input);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.currentFileBar {
+  height: 100%;
+  background: var(--info);
+  border-radius: 2px;
+  transition: width 0.2s ease;
+}
+
+.currentFileBytes {
+  font-size: 10.5px;
+  color: var(--text-dim);
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.warningMsg {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  font-size: 12px;
+  color: var(--warning);
+  line-height: 1.5;
+}
+
+.diff {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11.5px;
+}
+
+.diffAdded { color: var(--success); font-weight: 600; }
+.diffRemoved { color: var(--error); font-weight: 600; }
+.diffChanged { color: var(--warning); font-weight: 600; }
+.diffLabel { color: var(--text-dim); }
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-2px); }
+  to { opacity: 1; transform: translateY(0); }
+}

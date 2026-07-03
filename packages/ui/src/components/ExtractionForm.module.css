@@ -19,6 +19,11 @@
   border-color: var(--accent);
 }
 
+.urlRowDragOver {
+  border-color: var(--accent);
+  background: var(--accent-dim);
+}
+
 .urlIcon {
   color: var(--text-muted);
   flex-shrink: 0;
