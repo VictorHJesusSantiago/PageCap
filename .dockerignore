@@ -1,0 +1,11 @@
+node_modules
+packages/*/dist
+packages/*/node_modules
+engine/downloads
+engine/pagecap.db
+engine/pagecap.db-wal
+engine/pagecap.db-shm
+engine/__pycache__
+engine/**/__pycache__
+engine/.pytest_cache
+.git
