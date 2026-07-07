@@ -22,6 +22,7 @@ from playwright.async_api import Page, Request, Route
 
 from models import ExtractedFile
 from utils import unique_filename, build_cookie_header
+from download import download_with_retry, run_bounded
 
 
 _MEDIA_EXTS = {
@@ -52,6 +53,10 @@ async def extract_via_network(
     cookies: list[dict] | None = None,
     wait_seconds: int = 12,
     max_files: int = 500,
+    concurrency: int = 6,
+    max_retries: int = 2,
+    wait_until: str = "networkidle",
+    wait_timeout_ms: int = 60000,
 ) -> AsyncGenerator[ExtractedFile, None]:
     """
     Navigate to the URL, intercept every network request, collect media URLs,
@@ -95,7 +100,7 @@ async def extract_via_network(
     page.on("response", _on_response)
 
     try:
-        await page.goto(url, wait_until="networkidle", timeout=60000)
+        await page.goto(url, wait_until=wait_until, timeout=wait_timeout_ms)
     except Exception:
         pass  # page may throw on some sites; we still collected requests
 
@@ -117,63 +122,63 @@ async def extract_via_network(
 
     seen: set[str] = set()
     playlists: list[str] = []
-    count = 0
+    jobs: list[tuple[str, str, Path]] = []
 
-    async with httpx.AsyncClient(headers=headers, follow_redirects=True, timeout=120) as client:
-        for media_url, mime in all_urls.items():
-            if count >= max_files:
-                break
-            parsed = urlparse(media_url)
-            if parsed.scheme not in ("http", "https"):
-                continue
-            ext = Path(parsed.path.split("?")[0]).suffix.lower()
+    for media_url, mime in all_urls.items():
+        if len(jobs) >= max_files:
+            break
+        parsed = urlparse(media_url)
+        if parsed.scheme not in ("http", "https"):
+            continue
+        ext = Path(parsed.path.split("?")[0]).suffix.lower()
 
-            # Collect playlists for later ffmpeg mux
-            if ext in _PLAYLIST_EXTS or "mpegurl" in mime or "dash" in mime:
-                playlists.append(media_url)
-                continue
+        # Collect playlists for later ffmpeg mux
+        if ext in _PLAYLIST_EXTS or "mpegurl" in mime or "dash" in mime:
+            playlists.append(media_url)
+            continue
 
-            if ext not in _MEDIA_EXTS:
-                continue
+        if ext not in _MEDIA_EXTS:
+            continue
 
-            is_video = ext in {".mp4", ".webm", ".mkv", ".avi", ".mov", ".m4v", ".ogv", ".ts"}
-            is_audio = ext in {".mp3", ".wav", ".ogg", ".flac", ".aac", ".m4a", ".opus"}
+        is_video = ext in {".mp4", ".webm", ".mkv", ".avi", ".mov", ".m4v", ".ogv", ".ts"}
+        is_audio = ext in {".mp3", ".wav", ".ogg", ".flac", ".aac", ".m4a", ".opus"}
 
-            if is_video and not want_video:
-                continue
-            if is_audio and not want_audio:
-                continue
+        if is_video and not want_video:
+            continue
+        if is_audio and not want_audio:
+            continue
 
-            stem = re.sub(r'[^\w\-]', '_', Path(parsed.path).stem)[:60] or "media"
-            filename = unique_filename(stem + ext, seen)
-            seen.add(filename)
-            dest = output_dir / filename
+        stem = re.sub(r'[^\w\-]', '_', Path(parsed.path).stem)[:60] or "media"
+        filename = unique_filename(stem + ext, seen)
+        seen.add(filename)
+        jobs.append((media_url, filename, output_dir / filename))
 
-            try:
-                total = 0
-                async with client.stream("GET", media_url) as resp:
-                    if resp.status_code != 200:
-                        continue
-                    ct = resp.headers.get("content-type", "application/octet-stream")
-                    with open(dest, "wb") as f:
-                        async for chunk in resp.aiter_bytes(65536):
-                            f.write(chunk)
-                            total += len(chunk)
+    if jobs:
+        async with httpx.AsyncClient(
+            headers=headers, follow_redirects=True, timeout=120,
+            limits=httpx.Limits(max_connections=max(8, concurrency), max_keepalive_connections=4),
+        ) as client:
 
-                if total < _MIN_MEDIA_BYTES:
-                    dest.unlink(missing_ok=True)
-                    continue
-
-                count += 1
-                yield ExtractedFile(
+            async def _fetch_one(media_url: str, filename: str, dest: Path) -> ExtractedFile | None:
+                result = await download_with_retry(
+                    client, media_url, dest,
+                    min_size_bytes=_MIN_MEDIA_BYTES, max_retries=max_retries,
+                )
+                if result is None:
+                    return None
+                return ExtractedFile(
                     filename=filename,
                     url=media_url,
-                    content_type=ct,
-                    size_bytes=total,
+                    content_type=result.content_type,
+                    size_bytes=result.bytes_written,
                     local_path=str(dest),
+                    content_hash=result.sha256,
                 )
-            except Exception:
-                continue
+
+            coros = (_fetch_one(u, f, d) for u, f, d in jobs)
+            async for result in run_bounded(coros, concurrency):
+                if result is not None:
+                    yield result
 
     # Download and mux HLS/DASH playlists with ffmpeg
     for pl_url in playlists:
