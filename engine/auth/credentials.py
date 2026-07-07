@@ -51,6 +51,9 @@ _SUBMIT_SELECTORS = [
 ]
 
 
+_OTP_SELECTORS = ["input[name='otp']", "input[autocomplete='one-time-code']"]
+
+
 async def apply_credentials(
     page: Page,
     url: str,
@@ -59,6 +62,7 @@ async def apply_credentials(
     manual_captcha: bool = False,
     captcha_timeout: int = 120,
     on_captcha_detected: Optional[Callable[[str], None]] = None,
+    totp_secret: Optional[str] = None,
 ) -> bool:
     """
     Navigate to URL and attempt automated login.
@@ -116,6 +120,23 @@ async def apply_credentials(
         "input[name='otp']", "input[autocomplete='one-time-code']",
     ]
     has_challenge = any(await page.query_selector(sel) for sel in _challenge_selectors)
+
+    # If the challenge is specifically a TOTP field and we have a secret,
+    # compute the current code ourselves instead of pausing for a human —
+    # this is the only 2FA factor that's purely algorithmic (no external
+    # push/SMS to wait on), so it's safe to automate.
+    if has_challenge and totp_secret:
+        otp_field = await _find_first(page, _OTP_SELECTORS)
+        if otp_field:
+            try:
+                import pyotp
+                code = pyotp.TOTP(totp_secret).now()
+                await otp_field.fill(code)
+                await otp_field.press("Enter")
+                await page.wait_for_load_state("networkidle", timeout=15000)
+                has_challenge = any(await page.query_selector(sel) for sel in _challenge_selectors)
+            except Exception:
+                pass  # fall through to manual_captcha handling below if it's still unresolved
 
     if has_challenge and manual_captcha:
         if on_captcha_detected:
