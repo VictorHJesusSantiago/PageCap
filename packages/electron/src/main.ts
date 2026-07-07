@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, shell, dialog } from "electron";
+import { app, BrowserWindow, ipcMain, shell, dialog, Notification } from "electron";
 import path from "path";
 import { spawn, ChildProcess } from "child_process";
 import fs from "fs";
@@ -113,6 +113,13 @@ ipcMain.handle("open-folder", async (_event, folderPath: string) => {
 ipcMain.handle("choose-directory", async () => {
   const result = await dialog.showOpenDialog({ properties: ["openDirectory"] });
   return result.canceled ? null : result.filePaths[0];
+});
+
+// IPC: native desktop notification (job completion, etc.)
+ipcMain.handle("notify", async (_event, title: string, body: string) => {
+  if (Notification.isSupported()) {
+    new Notification({ title, body }).show();
+  }
 });
 
 app.whenReady().then(async () => {
