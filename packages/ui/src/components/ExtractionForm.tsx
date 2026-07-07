@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { ExtractionRequest, ContentType, AuthMethod, CookiesBrowser } from "@pagecap/core";
-import { Globe, Lock, Cookie, Folder, ChevronDown, ChevronUp } from "lucide-react";
+import { Globe, Lock, Cookie, Folder, ChevronDown, ChevronUp, Filter } from "lucide-react";
+import { FilterRulesEditor } from "./FilterRulesEditor";
 import styles from "./ExtractionForm.module.css";
 
 interface Props {
@@ -34,6 +35,40 @@ export function ExtractionForm({ onSubmit, disabled }: Props) {
   const [screenRecord, setScreenRecord] = useState(false);
   const [screenDuration, setScreenDuration] = useState(60);
   const [networkWait, setNetworkWait] = useState(12);
+  const [isDragOver, setIsDragOver] = useState(false);
+  const [targetExtensions, setTargetExtensions] = useState<string[]>([]);
+  const [urlPattern, setUrlPattern] = useState("");
+  const [minFileSizeBytes, setMinFileSizeBytes] = useState(0);
+  const [zipOutput, setZipOutput] = useState(false);
+  const [generateThumbnails, setGenerateThumbnails] = useState(false);
+
+  const extractUrlFromDrop = (e: React.DragEvent): string | null => {
+    const uriList = e.dataTransfer.getData("text/uri-list");
+    const plain = e.dataTransfer.getData("text/plain");
+    const candidate = (uriList || plain || "").split("\n")[0].trim();
+    try {
+      const parsed = new URL(candidate);
+      if (parsed.protocol === "http:" || parsed.protocol === "https:") return candidate;
+    } catch {
+      /* not a valid absolute URL — ignore the drop */
+    }
+    return null;
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    if (!disabled) setIsDragOver(true);
+  };
+
+  const handleDragLeave = () => setIsDragOver(false);
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+    if (disabled) return;
+    const dropped = extractUrlFromDrop(e);
+    if (dropped) setUrl(dropped);
+  };
 
   const toggleType = (ct: ContentType) => {
     if (ct === "all") {
@@ -59,6 +94,11 @@ export function ExtractionForm({ onSubmit, disabled }: Props) {
       screen_record: screenRecord,
       screen_record_duration: screenDuration,
       auth: { method: authMethod, manual_captcha: manualCaptcha },
+      target_extensions: targetExtensions.length ? targetExtensions : undefined,
+      url_pattern: urlPattern.trim() || undefined,
+      min_file_size_bytes: minFileSizeBytes || undefined,
+      zip_output: zipOutput,
+      generate_thumbnails: generateThumbnails,
     };
 
     if (authMethod === "credentials") {
@@ -75,12 +115,17 @@ export function ExtractionForm({ onSubmit, disabled }: Props) {
   return (
     <form className={styles.form} onSubmit={handleSubmit}>
       {/* URL */}
-      <div className={styles.urlRow}>
+      <div
+        className={`${styles.urlRow} ${isDragOver ? styles.urlRowDragOver : ""}`}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+      >
         <Globe size={16} className={styles.urlIcon} />
         <input
           type="url"
           className={styles.urlInput}
-          placeholder="https://exemplo.com"
+          placeholder="https://exemplo.com  (ou arraste um link aqui)"
           value={url}
           onChange={(e) => setUrl(e.target.value)}
           required
@@ -266,6 +311,35 @@ export function ExtractionForm({ onSubmit, disabled }: Props) {
               </div>
             )}
             <p className={styles.hint}>Captura o que é exibido na tela (funciona com players que não podem ser interceptados na rede).</p>
+          </div>
+
+          <div className={styles.advancedRow}>
+            <label className={styles.advancedLabel}>
+              <Filter size={13} /> Regras de filtro
+            </label>
+            <FilterRulesEditor
+              extensions={targetExtensions}
+              onExtensionsChange={setTargetExtensions}
+              urlPattern={urlPattern}
+              onUrlPatternChange={setUrlPattern}
+              minSizeBytes={minFileSizeBytes}
+              onMinSizeBytesChange={setMinFileSizeBytes}
+              disabled={disabled}
+            />
+          </div>
+
+          <div className={styles.advancedRow}>
+            <label className={styles.checkLabel}>
+              <input type="checkbox" checked={zipOutput} onChange={(e) => setZipOutput(e.target.checked)} disabled={disabled} />
+              Compactar tudo em .zip ao concluir
+            </label>
+          </div>
+
+          <div className={styles.advancedRow}>
+            <label className={styles.checkLabel}>
+              <input type="checkbox" checked={generateThumbnails} onChange={(e) => setGenerateThumbnails(e.target.checked)} disabled={disabled} />
+              Gerar miniaturas de imagens/vídeos
+            </label>
           </div>
         </div>
       )}
