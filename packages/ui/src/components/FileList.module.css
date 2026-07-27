@@ -164,6 +164,10 @@
   max-height: 480px;
   overflow-y: auto;
   padding-right: 4px;
+  /* Semantic <ul>: the rows are a list, which is what a screen reader should
+     announce ("list, 12 items"). Reset the default marker/indent. */
+  list-style: none;
+  margin: 0;
 }
 
 .item {
@@ -224,6 +228,16 @@
   display: flex;
   flex-direction: column;
   gap: 2px;
+  /* .info renders as a <button> when the file is previewable (so it is
+     keyboard reachable) and as a <div> otherwise. These resets make the button
+     visually identical to the div. */
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  text-align: left;
 }
 
 .filename {
