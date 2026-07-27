@@ -1,6 +1,9 @@
-import React, { useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import { ExtractedFile } from "@pagecap/core";
 import { Download, FileText, Film, Music, Image, File, FolderOpen, Archive, X, CheckSquare, Square } from "lucide-react";
+import { useModalA11y } from "../hooks/useModalA11y";
+import { formatBytes, getFileCategory } from "../format";
+import { useI18n } from "../i18n";
 import styles from "./FileList.module.css";
 
 interface Props {
@@ -23,45 +26,50 @@ const FILE_ICONS: Record<string, React.ReactNode> = {
   other: <File size={16} />,
 };
 
-function getFileCategory(ct: string): string {
-  if (ct.includes("pdf")) return "pdf";
-  if (ct.startsWith("image/")) return "image";
-  if (ct.startsWith("video/")) return "video";
-  if (ct.startsWith("audio/")) return "audio";
-  if (ct.includes("word") || ct.includes("excel") || ct.includes("powerpoint") || ct.includes("spreadsheet") || ct.includes("presentation")) return "document";
-  return "other";
-}
-
-function formatBytes(b?: number): string {
-  if (!b) return "?";
-  if (b < 1024) return `${b} B`;
-  if (b < 1024 * 1024) return `${(b / 1024).toFixed(1)} KB`;
-  return `${(b / (1024 * 1024)).toFixed(2)} MB`;
-}
-
-const FILTERS: { value: Filter; label: string }[] = [
-  { value: "all", label: "Todos" },
-  { value: "pdf", label: "PDF" },
-  { value: "image", label: "Imagens" },
-  { value: "video", label: "Vídeos" },
-  { value: "audio", label: "Áudio" },
-  { value: "document", label: "Documentos" },
+const FILTERS: { value: Filter; labelKey: string }[] = [
+  { value: "all", labelKey: "filterAll" },
+  { value: "pdf", labelKey: "filterPdf" },
+  { value: "image", labelKey: "filterImage" },
+  { value: "video", labelKey: "filterVideo" },
+  { value: "audio", labelKey: "filterAudio" },
+  { value: "document", labelKey: "filterDocument" },
 ];
 
-// Media that can render inline in a preview modal without a plugin.
+// Media that can render inline in a preview modal without a plugin. Mirrors
+// the server's inline allowlist in api.py — anything else is served as an
+// attachment, so offering a preview for it would just download the file.
 const PREVIEWABLE = new Set(["image", "video", "audio"]);
 
+// Browsers block rapid programmatic downloads fired in the same tick.
+const DOWNLOAD_STAGGER_MS = 250;
+
 export function FileList({ files, outputDir, getDownloadUrl, getPreviewUrl, getDownloadAllUrl, onReset }: Props) {
+  const { t } = useI18n();
   const [filter, setFilter] = useState<Filter>("all");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [previewFile, setPreviewFile] = useState<ExtractedFile | null>(null);
+
+  const closePreview = useCallback(() => setPreviewFile(null), []);
+  const dialogRef = useModalA11y(previewFile !== null, closePreview);
 
   const filtered = useMemo(
     () => files.filter((f) => filter === "all" || getFileCategory(f.content_type) === filter),
     [files, filter],
   );
 
-  const totalSize = files.reduce((sum, f) => sum + (f.size_bytes ?? 0), 0);
+  const countsByCategory = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const f of files) {
+      const cat = getFileCategory(f.content_type);
+      counts[cat] = (counts[cat] ?? 0) + 1;
+    }
+    return counts;
+  }, [files]);
+
+  const totalSize = useMemo(
+    () => files.reduce((sum, f) => sum + (f.size_bytes ?? 0), 0),
+    [files],
+  );
 
   const toggleSelect = (filename: string) => {
     setSelected((prev) => {
@@ -75,22 +83,14 @@ export function FileList({ files, outputDir, getDownloadUrl, getPreviewUrl, getD
   const allFilteredSelected = filtered.length > 0 && filtered.every((f) => selected.has(f.filename));
   const toggleSelectAll = () => {
     setSelected((prev) => {
-      if (allFilteredSelected) {
-        const next = new Set(prev);
-        filtered.forEach((f) => next.delete(f.filename));
-        return next;
-      }
       const next = new Set(prev);
-      filtered.forEach((f) => next.add(f.filename));
+      filtered.forEach((f) => (allFilteredSelected ? next.delete(f.filename) : next.add(f.filename)));
       return next;
     });
   };
 
-  // Browsers block rapid programmatic downloads if fired in the same tick;
-  // stagger them slightly so every selected file actually starts saving.
   const downloadSelected = () => {
-    const names = Array.from(selected);
-    names.forEach((filename, i) => {
+    Array.from(selected).forEach((filename, i) => {
       setTimeout(() => {
         const a = document.createElement("a");
         a.href = getDownloadUrl(filename);
@@ -98,44 +98,50 @@ export function FileList({ files, outputDir, getDownloadUrl, getPreviewUrl, getD
         document.body.appendChild(a);
         a.click();
         a.remove();
-      }, i * 250);
+      }, i * DOWNLOAD_STAGGER_MS);
     });
   };
+
+  const previewCategory = previewFile ? getFileCategory(previewFile.content_type) : null;
 
   return (
     <div className={styles.container}>
       <div className={styles.header}>
         <div className={styles.headerLeft}>
           <h2 className={styles.title}>
-            {files.length} arquivo{files.length !== 1 ? "s" : ""} extraído{files.length !== 1 ? "s" : ""}
+            {files.length} {t("filesExtracted")}
           </h2>
-          <span className={styles.totalSize}>{formatBytes(totalSize)} total</span>
+          <span className={styles.totalSize}>{formatBytes(totalSize)} {t("totalSize")}</span>
         </div>
         <div className={styles.headerRight}>
           {outputDir && (
-            <span className={styles.outDir} title={outputDir}>
-              <FolderOpen size={13} /> {outputDir}
+            <span className={styles.outDir} title={`${t("outputFolder")}: ${outputDir}`}>
+              <FolderOpen size={13} aria-hidden="true" /> {outputDir}
             </span>
           )}
-          <a className={styles.zipBtn} href={getDownloadAllUrl()} title="Baixar tudo como .zip">
-            <Archive size={13} /> Baixar tudo
+          <a className={styles.zipBtn} href={getDownloadAllUrl()}>
+            <Archive size={13} aria-hidden="true" /> {t("downloadAll")}
           </a>
-          <button className={styles.resetBtn} onClick={onReset}>
-            Nova extração
+          <button type="button" className={styles.resetBtn} onClick={onReset}>
+            {t("newExtraction")}
           </button>
         </div>
       </div>
 
-      <div className={styles.filters}>
+      {/* role=group + aria-pressed makes this read as a filter toggle set
+          rather than six unrelated buttons. */}
+      <div className={styles.filters} role="group" aria-label={t("whatToExtract")}>
         {FILTERS.map((f) => (
           <button
             key={f.value}
+            type="button"
+            aria-pressed={filter === f.value}
             className={`${styles.filterBtn} ${filter === f.value ? styles.filterActive : ""}`}
             onClick={() => setFilter(f.value)}
           >
-            {f.label}
+            {t(f.labelKey)}
             <span className={styles.filterCount}>
-              {f.value === "all" ? files.length : files.filter((x) => getFileCategory(x.content_type) === f.value).length}
+              {f.value === "all" ? files.length : countsByCategory[f.value] ?? 0}
             </span>
           </button>
         ))}
@@ -143,84 +149,125 @@ export function FileList({ files, outputDir, getDownloadUrl, getPreviewUrl, getD
 
       {filtered.length > 0 && (
         <div className={styles.selectionBar}>
-          <button type="button" className={styles.selectAllBtn} onClick={toggleSelectAll}>
-            {allFilteredSelected ? <CheckSquare size={14} /> : <Square size={14} />}
-            Selecionar todos
+          <button
+            type="button"
+            className={styles.selectAllBtn}
+            onClick={toggleSelectAll}
+            aria-pressed={allFilteredSelected}
+          >
+            {allFilteredSelected ? <CheckSquare size={14} aria-hidden="true" /> : <Square size={14} aria-hidden="true" />}
+            {t("selectAll")}
           </button>
           {selected.size > 0 && (
             <button type="button" className={styles.downloadSelectedBtn} onClick={downloadSelected}>
-              <Download size={13} /> Baixar {selected.size} selecionado{selected.size !== 1 ? "s" : ""}
+              <Download size={13} aria-hidden="true" /> {t("downloadSelected")} ({selected.size})
             </button>
           )}
         </div>
       )}
 
       {filtered.length === 0 ? (
-        <div className={styles.empty}>Nenhum arquivo deste tipo.</div>
+        <div className={styles.empty}>{t("emptyForFilter")}</div>
       ) : (
-        <div className={styles.list}>
-          {filtered.map((file, i) => {
+        <ul className={styles.list}>
+          {filtered.map((file) => {
             const category = getFileCategory(file.content_type);
             const canPreview = PREVIEWABLE.has(category);
+            const isSelected = selected.has(file.filename);
             return (
-              <div key={i} className={styles.item}>
+              // Keyed by filename, not array index: filenames are unique
+              // within a job (unique_filename guarantees it) and stable across
+              // filter changes, whereas an index key made React reuse the DOM
+              // node of a *different* file when the filter changed, carrying
+              // the previous row's checkbox state and <img> over with it.
+              <li key={file.filename} className={styles.item}>
                 <button
                   type="button"
                   className={styles.checkbox}
                   onClick={() => toggleSelect(file.filename)}
-                  title="Selecionar"
+                  role="checkbox"
+                  aria-checked={isSelected}
+                  aria-label={`${t("a11ySelectFile")}: ${file.filename}`}
                 >
-                  {selected.has(file.filename) ? <CheckSquare size={16} /> : <Square size={16} />}
+                  {isSelected ? <CheckSquare size={16} aria-hidden="true" /> : <Square size={16} aria-hidden="true" />}
                 </button>
 
                 {file.thumbnail && (
                   <img src={file.thumbnail} alt="" className={styles.thumb} loading="lazy" />
                 )}
-                <span className={styles.icon} data-cat={category}>
+                <span className={styles.icon} data-cat={category} aria-hidden="true">
                   {FILE_ICONS[category] ?? FILE_ICONS.other}
                 </span>
-                <div
-                  className={`${styles.info} ${canPreview ? styles.infoClickable : ""}`}
-                  onClick={() => canPreview && setPreviewFile(file)}
-                >
-                  <span className={styles.filename}>{file.filename}</span>
-                  <span className={styles.meta}>
-                    {file.content_type} · {formatBytes(file.size_bytes)}
-                    {file.converted_ext && ` · convertido para ${file.converted_ext}`}
-                  </span>
-                </div>
+
+                {/* A real <button> when it is interactive: the old clickable
+                    <div> was unreachable by keyboard and announced nothing. */}
+                {canPreview ? (
+                  <button
+                    type="button"
+                    className={`${styles.info} ${styles.infoClickable}`}
+                    onClick={() => setPreviewFile(file)}
+                    aria-label={`${t("a11yPreviewFile")}: ${file.filename}`}
+                  >
+                    <span className={styles.filename}>{file.filename}</span>
+                    <span className={styles.meta}>
+                      {file.content_type} · {formatBytes(file.size_bytes)}
+                      {file.converted_ext && ` · ${t("convertedTo")} ${file.converted_ext}`}
+                    </span>
+                  </button>
+                ) : (
+                  <div className={styles.info}>
+                    <span className={styles.filename}>{file.filename}</span>
+                    <span className={styles.meta}>
+                      {file.content_type} · {formatBytes(file.size_bytes)}
+                      {file.converted_ext && ` · ${t("convertedTo")} ${file.converted_ext}`}
+                    </span>
+                  </div>
+                )}
+
                 <a
                   href={getDownloadUrl(file.filename)}
                   download={file.filename}
                   className={styles.downloadBtn}
-                  target="_blank"
-                  rel="noreferrer"
+                  aria-label={`${t("a11yDownloadFile")}: ${file.filename}`}
                 >
-                  <Download size={14} />
+                  <Download size={14} aria-hidden="true" />
                 </a>
-              </div>
+              </li>
             );
           })}
-        </div>
+        </ul>
       )}
 
       {previewFile && (
-        <div className={styles.previewOverlay} onClick={() => setPreviewFile(null)}>
-          <div className={styles.previewModal} onClick={(e) => e.stopPropagation()}>
+        <div className={styles.previewOverlay} onClick={closePreview}>
+          <div
+            className={styles.previewModal}
+            ref={dialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-label={`${t("a11yPreviewDialog")}: ${previewFile.filename}`}
+            tabIndex={-1}
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className={styles.previewHeader}>
               <span className={styles.previewTitle}>{previewFile.filename}</span>
-              <button type="button" className={styles.previewClose} onClick={() => setPreviewFile(null)}>
-                <X size={18} />
+              <button
+                type="button"
+                className={styles.previewClose}
+                onClick={closePreview}
+                aria-label={t("a11yClosePreview")}
+              >
+                <X size={18} aria-hidden="true" />
               </button>
             </div>
             <div className={styles.previewBody}>
-              {getFileCategory(previewFile.content_type) === "image" && (
+              {previewCategory === "image" && (
                 <img src={getPreviewUrl(previewFile.filename)} alt={previewFile.filename} className={styles.previewImg} />
               )}
-              {getFileCategory(previewFile.content_type) === "video" && (
+              {previewCategory === "video" && (
                 <video src={getPreviewUrl(previewFile.filename)} controls autoPlay className={styles.previewMedia} />
               )}
-              {getFileCategory(previewFile.content_type) === "audio" && (
+              {previewCategory === "audio" && (
                 <audio src={getPreviewUrl(previewFile.filename)} controls autoPlay className={styles.previewAudio} />
               )}
             </div>
