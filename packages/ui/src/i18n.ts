@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback, createElement, ReactNode } from "react";
+import { createContext, useContext, useState, useCallback, useEffect, createElement, ReactNode } from "react";
 
 export type Locale = "pt-BR" | "en-US";
 
@@ -8,7 +8,10 @@ const STORAGE_KEY = "pagecap-locale";
 // progress states, file list chrome). Deep per-field microcopy inside every
 // advanced-option tooltip is not exhaustively translated — this is a
 // functional language switch for the core flow, not a full localization pass.
-const DICTIONARIES: Record<Locale, Record<string, string>> = {
+// Exported so a test can assert both locales carry the same key set — a key
+// present in one and missing in the other renders as a raw identifier for half
+// the users, and nothing else catches that.
+export const DICTIONARIES: Record<Locale, Record<string, string>> = {
   "pt-BR": {
     tagline: "Extrai qualquer conteúdo de qualquer página web",
     history: "Histórico de jobs",
@@ -32,6 +35,26 @@ const DICTIONARIES: Record<Locale, Record<string, string>> = {
     downloadSelected: "Baixar selecionados",
     jobDoneTitle: "Extração concluída",
     jobErrorTitle: "Extração falhou",
+    // FileList
+    filesExtracted: "arquivo(s) extraído(s)",
+    totalSize: "total",
+    filterAll: "Todos",
+    filterPdf: "PDF",
+    filterImage: "Imagens",
+    filterVideo: "Vídeos",
+    filterAudio: "Áudio",
+    filterDocument: "Documentos",
+    emptyForFilter: "Nenhum arquivo deste tipo.",
+    convertedTo: "convertido para",
+    outputFolder: "Pasta de saída",
+    // Accessible names for icon-only controls
+    a11ySelectFile: "Selecionar arquivo",
+    a11yDownloadFile: "Baixar arquivo",
+    a11yPreviewFile: "Pré-visualizar arquivo",
+    a11yClosePreview: "Fechar pré-visualização",
+    a11yRefreshHistory: "Atualizar histórico",
+    a11yToggleTheme: "Alternar tema claro/escuro",
+    a11yPreviewDialog: "Pré-visualização do arquivo",
   },
   "en-US": {
     tagline: "Extract any content from any web page",
@@ -56,6 +79,26 @@ const DICTIONARIES: Record<Locale, Record<string, string>> = {
     downloadSelected: "Download selected",
     jobDoneTitle: "Extraction complete",
     jobErrorTitle: "Extraction failed",
+    // FileList
+    filesExtracted: "file(s) extracted",
+    totalSize: "total",
+    filterAll: "All",
+    filterPdf: "PDF",
+    filterImage: "Images",
+    filterVideo: "Videos",
+    filterAudio: "Audio",
+    filterDocument: "Documents",
+    emptyForFilter: "No files of this type.",
+    convertedTo: "converted to",
+    outputFolder: "Output folder",
+    // Accessible names for icon-only controls
+    a11ySelectFile: "Select file",
+    a11yDownloadFile: "Download file",
+    a11yPreviewFile: "Preview file",
+    a11yClosePreview: "Close preview",
+    a11yRefreshHistory: "Refresh history",
+    a11yToggleTheme: "Toggle light/dark theme",
+    a11yPreviewDialog: "File preview",
   },
 };
 
@@ -74,6 +117,13 @@ const I18nContext = createContext<I18nContextValue | null>(null);
 
 export function I18nProvider({ children }: { children: ReactNode }) {
   const [locale, setLocaleState] = useState<Locale>(getInitialLocale);
+
+  // WCAG 3.1.1: <html lang> must reflect the language actually rendered, or a
+  // screen reader reads Portuguese copy with an English voice (and vice versa).
+  // The static attribute in index.html is only the initial value.
+  useEffect(() => {
+    document.documentElement.lang = locale;
+  }, [locale]);
 
   const setLocale = useCallback((l: Locale) => {
     setLocaleState(l);
