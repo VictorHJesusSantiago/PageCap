@@ -28,6 +28,23 @@ jobs:
       - name: Run tests
         run: python -m pytest -v
 
+  engine-audit:
+    name: Engine dependency audit (SCA)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      # Shift-left: a known-vulnerable transitive dependency should fail the
+      # build, not be discovered from a downstream report.
+      - name: Audit Python dependencies
+        run: |
+          pip install pip-audit
+          pip-audit -r engine/requirements.txt --strict
+
   frontend-build:
     name: Frontend (TypeScript) build
     runs-on: ubuntu-latest
@@ -41,6 +58,27 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      # Runtime dependencies are the gate: anything shipped to a user must be
+      # clean. The full tree is reported but not enforced — electron-builder's
+      # packaging chain (ejs/jake/minimatch/glob/temp) carries high advisories
+      # with no fixed release, and it only ever runs on a maintainer's machine
+      # during `npm run dist`. Re-check when electron-builder > 26.15.3 ships.
+      - name: Audit runtime dependencies (blocking)
+        run: npm audit --omit=dev --audit-level=high
+
+      - name: Audit all dependencies (informational)
+        continue-on-error: true
+        run: npm audit --audit-level=high
+
+      - name: Typecheck all workspaces
+        run: npm run typecheck
+
+      - name: Test @pagecap/core
+        run: npm run test --workspace=packages/core
+
+      - name: Test @pagecap/ui (Vitest + RTL + axe, with coverage gate)
+        run: npm run test:coverage --workspace=packages/ui
 
       - name: Build @pagecap/core
         run: npm run build --workspace=packages/core
