@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useId, useState } from "react";
 import { X, Plus } from "lucide-react";
 import styles from "./FilterRulesEditor.module.css";
 
@@ -12,6 +12,8 @@ interface Props {
   disabled?: boolean;
 }
 
+const BYTES_PER_KB = 1024;
+
 /** Visual rule builder for what to include/exclude from an extraction:
  * extension chips (added one at a time), a regex the asset URL must match,
  * and a minimum file size — all map directly to backend ExtractionRequest
@@ -23,6 +25,13 @@ export function FilterRulesEditor({
   disabled,
 }: Props) {
   const [draft, setDraft] = useState("");
+  // useId keeps label/input association correct even with several instances of
+  // this component on one page. A bare <label> with no `for` is announced as
+  // unrelated text, so the field itself has no accessible name (WCAG 1.3.1).
+  const baseId = useId();
+  const extId = `${baseId}-ext`;
+  const patternId = `${baseId}-pattern`;
+  const sizeId = `${baseId}-size`;
 
   const addExtension = () => {
     let ext = draft.trim().toLowerCase();
@@ -39,7 +48,9 @@ export function FilterRulesEditor({
   return (
     <div className={styles.container}>
       <div className={styles.field}>
-        <label className={styles.label}>Extensões específicas (vazio = usar categorias acima)</label>
+        <label className={styles.label} htmlFor={extId}>
+          Extensões específicas (vazio = usar categorias acima)
+        </label>
         <div className={styles.chipRow}>
           {extensions.map((ext) => (
             <span key={ext} className={styles.chip}>
@@ -50,12 +61,13 @@ export function FilterRulesEditor({
                 disabled={disabled}
                 aria-label={`Remover ${ext}`}
               >
-                <X size={11} />
+                <X size={11} aria-hidden="true" />
               </button>
             </span>
           ))}
           <div className={styles.chipInput}>
             <input
+              id={extId}
               type="text"
               placeholder=".pdf, .mp3..."
               value={draft}
@@ -68,37 +80,52 @@ export function FilterRulesEditor({
               }}
               disabled={disabled}
             />
-            <button type="button" onClick={addExtension} disabled={disabled || !draft.trim()}>
-              <Plus size={12} />
+            <button
+              type="button"
+              onClick={addExtension}
+              disabled={disabled || !draft.trim()}
+              aria-label="Adicionar extensão"
+            >
+              <Plus size={12} aria-hidden="true" />
             </button>
           </div>
         </div>
       </div>
 
       <div className={styles.field}>
-        <label className={styles.label}>Padrão de URL (regex)</label>
+        <label className={styles.label} htmlFor={patternId}>
+          Padrão de URL (regex)
+        </label>
         <input
+          id={patternId}
           type="text"
           className={styles.textInput}
           placeholder="ex.: /uploads/.*\.jpg$"
           value={urlPattern}
           onChange={(e) => onUrlPatternChange(e.target.value)}
           disabled={disabled}
+          spellCheck={false}
+          autoComplete="off"
         />
       </div>
 
       <div className={styles.field}>
-        <label className={styles.label}>Tamanho mínimo do arquivo</label>
+        <label className={styles.label} htmlFor={sizeId}>
+          Tamanho mínimo do arquivo
+        </label>
         <div className={styles.sizeRow}>
           <input
+            id={sizeId}
             type="number"
             min={0}
             className={styles.sizeInput}
-            value={Math.round(minSizeBytes / 1024)}
-            onChange={(e) => onMinSizeBytesChange(Math.max(0, Number(e.target.value)) * 1024)}
+            value={Math.round(minSizeBytes / BYTES_PER_KB)}
+            onChange={(e) =>
+              onMinSizeBytesChange(Math.max(0, Number(e.target.value)) * BYTES_PER_KB)
+            }
             disabled={disabled}
           />
-          <span>KB</span>
+          <span aria-hidden="true">KB</span>
         </div>
       </div>
     </div>
