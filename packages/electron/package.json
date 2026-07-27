@@ -14,9 +14,9 @@
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
-    "concurrently": "^9.0.0",
-    "electron": "^32.0.0",
-    "electron-builder": "^25.0.0",
+    "concurrently": "^10.0.4",
+    "electron": "^43.2.0",
+    "electron-builder": "^26.15.3",
     "typescript": "^5.6.0",
     "wait-on": "^8.0.0"
   },
@@ -35,7 +35,20 @@
       {
         "from": "../../engine",
         "to": "engine",
-        "filter": ["**/*", "!__pycache__", "!*.pyc", "!downloads"]
+        "filter": [
+          "**/*",
+          "!__pycache__",
+          "!**/__pycache__",
+          "!*.pyc",
+          "!downloads",
+          "!tests",
+          "!.pytest_cache",
+          "!pagecap.db",
+          "!pagecap.db-wal",
+          "!pagecap.db-shm",
+          "!.pagecap_key",
+          "!.env"
+        ]
       }
     ],
     "win": {
