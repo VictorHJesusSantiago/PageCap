@@ -61,7 +61,9 @@ _r(FileTypeInfo(".xls",  "application/vnd.ms-excel", "Excel (legado)",   "spread
     can_convert_to=[".xlsx", ".csv", ".ods", ".json", ".parquet"]))
 _r(FileTypeInfo(".xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     "Excel (moderno)", "spreadsheet",
-    can_convert_to=[".csv", ".ods", ".json", ".parquet", ".html", ".xls"]))
+    # No ".xls": pandas dropped the xlwt writer in 2.0, so advertising it would
+    # promise a conversion converters/data.py cannot perform.
+    can_convert_to=[".csv", ".ods", ".json", ".parquet", ".html"]))
 _r(FileTypeInfo(".ods",  "application/vnd.oasis.opendocument.spreadsheet","OpenDocument Spreadsheet","spreadsheet",
     can_convert_to=[".xlsx", ".csv", ".json"]))
 _r(FileTypeInfo(".numbers","application/x-iwork-numbers-sffnumbers","Apple Numbers","spreadsheet"))
@@ -74,7 +76,13 @@ _r(FileTypeInfo(".pptx", "application/vnd.openxmlformats-officedocument.presenta
     can_convert_to=[".pdf", ".odp", ".html"]))
 _r(FileTypeInfo(".odp",  "application/vnd.oasis.opendocument.presentation","OpenDocument Presentation","presentation",
     can_convert_to=[".pptx", ".pdf"]))
-_r(FileTypeInfo(".key",  "application/x-iwork-keynote-sffkey", "Apple Keynote", "presentation"))
+# NB: ".key" is claimed twice in the wild — Apple Keynote and PEM private keys.
+# The certificate block below registers ".key" and, being later, wins the
+# REGISTRY slot. Keynote therefore uses its package extension instead, so the
+# two entries no longer silently overwrite each other. Do not re-add a bare
+# ".key" here: it would flip every private key into the "presentation"
+# category and hand it to the pandoc converter.
+_r(FileTypeInfo(".keynote", "application/x-iwork-keynote-sffkey", "Apple Keynote", "presentation"))
 
 # ── Raster Images ─────────────────────────────────────────────────────────────
 _img = [".jpg",".jpeg",".png",".gif",".bmp",".webp",".tiff",".tif",".avif",".heic",".heif",".ico"]
