@@ -24,6 +24,9 @@ browser-cookie3>=0.19.1
 # ── Auth: TOTP 2FA ────────────────────────────────────────────────────────────
 pyotp>=2.9.0
 
+# ── Encryption at rest for stored passwords/TOTP secrets (crypto_box.py) ──────
+cryptography>=43.0.0
+
 # ── Image conversion ──────────────────────────────────────────────────────────
 Pillow>=10.4.0
 pillow-heif>=0.18.0        # HEIC/HEIF support
