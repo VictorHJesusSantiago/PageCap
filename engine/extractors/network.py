@@ -10,15 +10,12 @@ from __future__ import annotations
 
 import asyncio
 import re
-import subprocess
-import sys
-import tempfile
 from pathlib import Path
 from typing import AsyncGenerator
-from urllib.parse import urljoin, urlparse
+from urllib.parse import urlparse
 
 import httpx
-from playwright.async_api import Page, Request, Route
+from playwright.async_api import Page, Request
 
 from models import ExtractedFile
 from utils import unique_filename, build_cookie_header
@@ -211,14 +208,28 @@ async def extract_via_network(
             )
 
 
+# A playlist is attacker-controlled content: PageCap fetches .m3u8/.mpd files
+# from whatever page it was pointed at. ffmpeg will happily follow a segment
+# URI of `file:///etc/passwd` (or `...\pagecap.db`) and mux the bytes into the
+# output file, which then lands in downloads/ and is served by the API — a
+# read-anything primitive handed to any website. Constrain ffmpeg to network
+# protocols only. `file` and `concat` are the dangerous ones and are absent
+# here by design; do not add them.
+_FFMPEG_PROTOCOL_WHITELIST = "http,https,tcp,tls,crypto,httpproxy"
+
+
 async def _ffmpeg_download(url: str, dest: Path, headers: dict[str, str]) -> bool:
     """Use ffmpeg to download and mux an HLS/DASH stream."""
     header_args: list[str] = []
     for k, v in headers.items():
-        header_args += ["-headers", f"{k}: {v}\r\n"]
+        # CR/LF in a header value would let a crafted URL (Referer) or cookie
+        # smuggle extra request headers into every segment fetch.
+        clean = str(v).replace("\r", "").replace("\n", "")
+        header_args += ["-headers", f"{k}: {clean}\r\n"]
 
     cmd = [
         "ffmpeg", "-y",
+        "-protocol_whitelist", _FFMPEG_PROTOCOL_WHITELIST,
         *header_args,
         "-i", url,
         "-c", "copy",
