@@ -5,6 +5,8 @@ engine/downloads
 engine/pagecap.db
 engine/pagecap.db-wal
 engine/pagecap.db-shm
+engine/.pagecap_key
+.env
 engine/__pycache__
 engine/**/__pycache__
 engine/.pytest_cache

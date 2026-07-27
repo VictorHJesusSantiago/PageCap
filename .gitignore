@@ -14,6 +14,9 @@ engine/.jobs/
 engine/pagecap.db
 engine/pagecap.db-wal
 engine/pagecap.db-shm
+# Encryption key for stored credentials (crypto_box.py) — never commit.
+.pagecap_key
+engine/.pagecap_key
 packages/ui/dist/
 packages/electron/dist/
 packages/electron/out/
