@@ -61,7 +61,11 @@ async def _read(pd, src: Path, ext: str):
         except ImportError:
             raise RuntimeError("fastavro não instalado: pip install fastavro")
     elif ext == ".msgpack":
-        return pd.read_msgpack(src)
+        # pandas removed read_msgpack in 1.0 — calling it raises an opaque
+        # AttributeError. Fail with something a user can act on.
+        raise ValueError(
+            "Leitura de .msgpack não é suportada (pandas removeu read_msgpack na v1.0)"
+        )
     else:
         raise ValueError(f"Formato de leitura não suportado: {ext}")
 
@@ -74,7 +78,10 @@ async def _write(pd, df, dest: Path, ext: str):
     elif ext == ".xlsx":
         df.to_excel(dest, index=False, engine="openpyxl")
     elif ext == ".xls":
-        df.to_excel(dest, index=False, engine="xlwt")
+        # pandas dropped the xlwt writer in 2.0; there is no maintained
+        # pure-Python .xls writer left. Say so instead of surfacing an
+        # ImportError about a package that can no longer be installed.
+        raise ValueError("Escrita de .xls legado não é suportada — converta para .xlsx")
     elif ext == ".ods":
         df.to_excel(dest, index=False, engine="odf")
     elif ext == ".json":
