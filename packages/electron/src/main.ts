@@ -1,10 +1,18 @@
 import { app, BrowserWindow, ipcMain, shell, dialog, Notification } from "electron";
 import path from "path";
 import { spawn, ChildProcess } from "child_process";
+import crypto from "crypto";
 import fs from "fs";
 
 const isDev = process.env.NODE_ENV !== "production";
 const API_PORT = 8765;
+
+// The packaged renderer loads over file://, so its Origin header is the literal
+// string "null" — and so is the Origin of a sandboxed iframe on any website.
+// The engine therefore only honours Origin: null when explicitly told to, and
+// we pair that with a per-launch bearer token so a hostile page that fakes the
+// origin still can't touch the API. See engine/api.py's CORS block.
+const API_TOKEN = crypto.randomBytes(32).toString("hex");
 
 let mainWindow: BrowserWindow | null = null;
 let apiProcess: ChildProcess | null = null;
@@ -39,7 +47,12 @@ async function startApiServer(): Promise<void> {
     ["-m", "uvicorn", "api:app", "--host", "127.0.0.1", "--port", String(API_PORT)],
     {
       cwd: engineDir,
-      env: { ...process.env, PYTHONUNBUFFERED: "1" },
+      env: {
+        ...process.env,
+        PYTHONUNBUFFERED: "1",
+        PAGECAP_API_TOKEN: API_TOKEN,
+        PAGECAP_ALLOW_NULL_ORIGIN: "1",
+      },
     },
   );
 
@@ -87,11 +100,27 @@ function createWindow() {
     titleBarStyle: process.platform === "darwin" ? "hiddenInset" : "default",
   });
 
-  // Inject API base URL for the renderer
+  // Inject API base URL + this launch's token for the renderer.
   mainWindow.webContents.on("did-finish-load", () => {
     mainWindow?.webContents.executeJavaScript(
-      `window.__PAGECAP_API__ = "http://127.0.0.1:${API_PORT}";`,
+      `window.__PAGECAP_API__ = "http://127.0.0.1:${API_PORT}";` +
+        `window.__PAGECAP_TOKEN__ = ${JSON.stringify(API_TOKEN)};`,
     );
+  });
+
+  // The renderer only ever needs the bundled UI and the local API. Anything
+  // else — a redirect, an <a target="_blank"> in extracted content — goes to
+  // the user's real browser instead of becoming a window with preload access.
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    if (/^https?:\/\//.test(url)) shell.openExternal(url);
+    return { action: "deny" };
+  });
+  mainWindow.webContents.on("will-navigate", (event, url) => {
+    const allowed = isDev ? "http://localhost:5173" : "file://";
+    if (!url.startsWith(allowed)) {
+      event.preventDefault();
+      if (/^https?:\/\//.test(url)) shell.openExternal(url);
+    }
   });
 
   if (isDev) {
@@ -104,9 +133,14 @@ function createWindow() {
   mainWindow.on("closed", () => { mainWindow = null; });
 }
 
-// IPC: open output folder in system file explorer
+// IPC: open output folder in system file explorer.
+// shell.openPath on a *file* asks the OS to launch it with its default handler
+// — i.e. execute it. Restrict this channel to directories, which is all the UI
+// ever passes and all it needs.
 ipcMain.handle("open-folder", async (_event, folderPath: string) => {
-  await shell.openPath(folderPath);
+  if (typeof folderPath !== "string" || !fs.existsSync(folderPath)) return;
+  if (!fs.statSync(folderPath).isDirectory()) return;
+  await shell.openPath(path.resolve(folderPath));
 });
 
 // IPC: choose output directory
