@@ -20,14 +20,16 @@ from __future__ import annotations
 import asyncio
 import platform
 import shutil
-import subprocess
 import time
 from pathlib import Path
-from typing import AsyncGenerator, Optional
+from typing import AsyncGenerator
 
 from playwright.async_api import Page, BrowserContext
 
 from models import ExtractedFile
+
+# Below this the capture is a header and a black frame or two — not a recording.
+_MIN_RECORDING_BYTES = 10_000
 
 
 def _has_ffmpeg() -> bool:
@@ -133,54 +135,11 @@ async def extract_screen_record(
     except Exception:
         pass
 
-    if dest.exists() and dest.stat().st_size > 10_000:
+    if dest.exists() and dest.stat().st_size > _MIN_RECORDING_BYTES:
         yield ExtractedFile(
             filename=filename,
             url=url,
             content_type="video/mp4",
             size_bytes=dest.stat().st_size,
             local_path=str(dest),
-        )
-
-
-async def extract_screen_record_interactive(
-    page: Page,
-    url: str,
-    output_dir: Path,
-    stop_event: asyncio.Event,
-) -> AsyncGenerator[ExtractedFile, None]:
-    """
-    Records until stop_event is set (used when duration is unknown).
-    """
-    if not _has_ffmpeg():
-        raise RuntimeError("ffmpeg não encontrado no PATH.")
-
-    filename = f"screen_record_{int(time.time())}.mp4"
-    dest = output_dir / filename
-    input_args = _ffmpeg_input_args()
-
-    cmd = ["ffmpeg", "-y", *input_args, "-c:v", "libx264", "-preset", "ultrafast",
-           "-crf", "23", "-c:a", "aac", "-b:a", "128k", str(dest)]
-
-    try:
-        await page.goto(url, wait_until="networkidle", timeout=60000)
-    except Exception:
-        pass
-
-    proc = await asyncio.create_subprocess_exec(
-        *cmd, stdout=asyncio.subprocess.DEVNULL, stderr=asyncio.subprocess.DEVNULL,
-    )
-
-    await stop_event.wait()
-
-    try:
-        proc.terminate()
-        await asyncio.wait_for(proc.wait(), timeout=15)
-    except Exception:
-        pass
-
-    if dest.exists() and dest.stat().st_size > 10_000:
-        yield ExtractedFile(
-            filename=filename, url=url, content_type="video/mp4",
-            size_bytes=dest.stat().st_size, local_path=str(dest),
         )

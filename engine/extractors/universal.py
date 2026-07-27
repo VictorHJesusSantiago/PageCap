@@ -29,26 +29,40 @@ import security
 # so web-component-heavy sites (many design systems, video players) silently
 # hid their media without this — closed shadow roots remain unreachable by
 # design (the browser gives no API for that), same as a real user's browser.
+#
+# This is also the *only* DOM collector now. The previous Python-side loop
+# (query_selector_all("*") then `await el.get_attribute(attr)` for each of 22
+# attributes) issued one CDP round-trip per attribute per element — on a page
+# with 3,000 elements that is 66,000 sequential round-trips, minutes of wall
+# clock for work the browser does in milliseconds. Everything happens in-page
+# in a single evaluate() now.
 _SHADOW_URLS_JS = r"""
 (urlAttrs) => {
   const urls = new Set();
-  const seen = new Set();
+  const seen = new WeakSet();
+
+  function addResolved(value) {
+    if (!value) return;
+    try { urls.add(new URL(value, location.href).href); } catch (e) {}
+  }
 
   function visit(root) {
-    if (seen.has(root)) return;
-    seen.add(root);
+    if (typeof root === 'object' && root !== null) {
+      if (seen.has(root)) return;
+      seen.add(root);
+    }
     const all = root.querySelectorAll ? root.querySelectorAll('*') : [];
     for (const el of all) {
+      if (!el.getAttribute) continue;
       for (const attr of urlAttrs) {
-        const val = el.getAttribute && el.getAttribute(attr);
+        const val = el.getAttribute(attr);
         if (!val) continue;
         if (attr === 'srcset' || attr === 'data-srcset') {
           for (const part of val.split(',')) {
-            const u = part.trim().split(' ')[0];
-            if (u) { try { urls.add(new URL(u, location.href).href); } catch (e) {} }
+            addResolved(part.trim().split(' ')[0]);
           }
         } else {
-          try { urls.add(new URL(val, location.href).href); } catch (e) {}
+          addResolved(val);
         }
       }
       if (el.shadowRoot) visit(el.shadowRoot);
@@ -200,65 +214,28 @@ async def extract_universal(
     page.remove_listener("response", _on_response)
 
     # ── Collect URLs from DOM (main frame + every nested iframe) ─────────────
+    # Two evaluate() calls per frame — one for markup attributes (including
+    # open shadow roots), one for stylesheet url() references. Both run
+    # entirely in-page and return already-resolved absolute URLs.
     dom_urls: set[str] = set()
 
     async def _collect_from_frame(frame, frame_url: str) -> None:
-        # CSS background-image / mask-image / border-image / @font-face src
         try:
-            css_urls = await frame.evaluate(_CSS_URLS_JS)
-            for u in css_urls:
+            dom_urls.update(await frame.evaluate(_SHADOW_URLS_JS, _URL_ATTRS))
+        except Exception:
+            pass  # detached/cross-origin frame we can't introspect
+
+        # CSS background-image / mask-image / border-image / @font-face src.
+        # These come back as authored (possibly relative) so they still need
+        # joining against the frame's own URL.
+        try:
+            for u in await frame.evaluate(_CSS_URLS_JS):
                 dom_urls.add(urljoin(frame_url, u))
         except Exception:
             pass
 
-        try:
-            all_els = await frame.query_selector_all("*")
-        except Exception:
-            return  # detached/cross-origin frame we can't introspect
-
-        for el in all_els:
-            for attr in _URL_ATTRS:
-                try:
-                    val = await el.get_attribute(attr)
-                    if not val:
-                        continue
-                    # srcset can have multiple entries
-                    if attr in ("srcset", "data-srcset"):
-                        for part in val.split(","):
-                            u = part.strip().split(" ")[0]
-                            if u:
-                                dom_urls.add(urljoin(frame_url, u))
-                    else:
-                        dom_urls.add(urljoin(frame_url, val))
-                except Exception:
-                    continue
-
-        try:
-            links = await frame.query_selector_all("a[href]")
-        except Exception:
-            links = []
-        for link in links:
-            try:
-                href = await link.get_attribute("href")
-                if href:
-                    dom_urls.add(urljoin(frame_url, href))
-            except Exception:
-                continue
-
-    await _collect_from_frame(page, url)
     for frame in page.frames:
-        if frame == page.main_frame:
-            continue
         await _collect_from_frame(frame, frame.url or url)
-
-    # Shadow DOM: query_selector_all("*") above never sees into open shadow
-    # roots, so web-component-based sites need this dedicated in-page walk.
-    for frame in page.frames:
-        try:
-            shadow_urls = await frame.evaluate(_SHADOW_URLS_JS, _URL_ATTRS)
-            dom_urls.update(shadow_urls)
-        except Exception:
-            continue
 
     # ── Merge DOM + intercepted ───────────────────────────────────────────────
     all_candidate_urls: set[str] = dom_urls | set(intercepted.keys())
