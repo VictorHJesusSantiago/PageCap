@@ -51,6 +51,16 @@ class AuthConfig(BaseModel):
     totp_secret: Optional[str] = None
 
 
+# AuthConfig fields that carry a live secret. They are accepted on the way IN
+# (the engine needs them to drive a real login) but must NEVER be echoed back
+# out of an API response — see api.py's list/get handlers for templates and
+# schedules, which embed a full ExtractionRequest (and therefore an AuthConfig).
+SECRET_AUTH_FIELDS: set[str] = {"password", "totp_secret", "cookies_raw"}
+
+# Pydantic `exclude=` shape for any model with a `request: ExtractionRequest`.
+PUBLIC_EXCLUDE: dict = {"request": {"auth": SECRET_AUTH_FIELDS}}
+
+
 class ExtractionRequest(BaseModel):
     url: str
     content_types: list[ContentType] = [ContentType.all]
