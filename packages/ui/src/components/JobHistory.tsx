@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import { JobState } from "@pagecap/core";
 import { History, RefreshCw, CheckCircle2, XCircle, Loader2, Ban } from "lucide-react";
 import { client } from "../apiClient";
+import { useI18n } from "../i18n";
 import styles from "./JobHistory.module.css";
 
 interface Props {
@@ -25,6 +26,7 @@ function formatDate(ts: number): string {
 }
 
 export function JobHistory({ onSelect, activeJobId }: Props) {
+  const { t } = useI18n();
   const [jobs, setJobs] = useState<JobState[]>([]);
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
@@ -47,9 +49,14 @@ export function JobHistory({ onSelect, activeJobId }: Props) {
 
   return (
     <div className={styles.container}>
-      <button className={styles.toggle} onClick={() => setOpen((o) => !o)} type="button">
-        <History size={14} />
-        Histórico de jobs
+      <button
+        className={styles.toggle}
+        onClick={() => setOpen((o) => !o)}
+        type="button"
+        aria-expanded={open}
+      >
+        <History size={14} aria-hidden="true" />
+        {t("history")}
         {jobs.length > 0 && <span className={styles.count}>{jobs.length}</span>}
       </button>
 
@@ -57,8 +64,15 @@ export function JobHistory({ onSelect, activeJobId }: Props) {
         <div className={styles.panel}>
           <div className={styles.panelHeader}>
             <span>{jobs.length} job{jobs.length !== 1 ? "s" : ""}</span>
-            <button className={styles.refreshBtn} onClick={refresh} disabled={loading} type="button">
-              <RefreshCw size={13} className={loading ? styles.spin : ""} />
+            <button
+              className={styles.refreshBtn}
+              onClick={refresh}
+              disabled={loading}
+              type="button"
+              aria-label={t("a11yRefreshHistory")}
+              aria-busy={loading}
+            >
+              <RefreshCw size={13} className={loading ? styles.spin : ""} aria-hidden="true" />
             </button>
           </div>
 

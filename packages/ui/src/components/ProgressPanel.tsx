@@ -1,6 +1,7 @@
 import React from "react";
 import { JobState } from "@pagecap/core";
 import { Loader2, CheckCircle2, XCircle, X, Check, Pause, Play, AlertTriangle } from "lucide-react";
+import { formatBytes } from "../format";
 import { useI18n } from "../i18n";
 import styles from "./ProgressPanel.module.css";
 
@@ -12,12 +13,9 @@ interface Props {
   onResume?: () => void;
 }
 
-function formatBytes(b?: number | null): string {
-  if (!b) return "0 B";
-  if (b < 1024) return `${b} B`;
-  if (b < 1024 * 1024) return `${(b / 1024).toFixed(1)} KB`;
-  return `${(b / (1024 * 1024)).toFixed(2)} MB`;
-}
+/** In a progress readout a falsy size means "nothing transferred yet", not
+ * "unknown", so the shared helper's default fallback is overridden. */
+const formatProgressBytes = (b?: number | null) => formatBytes(b, "0 B");
 
 export function ProgressPanel({ job, phase, onCancel, onPause, onResume }: Props) {
   const { t } = useI18n();
@@ -46,31 +44,41 @@ export function ProgressPanel({ job, phase, onCancel, onPause, onResume }: Props
           <span className={styles.url}>{job.url}</span>
         </div>
         {isActive && job.status === "running" && onPause && (
-          <button className={styles.cancelBtn} onClick={onPause} title={t("pause")}>
-            <Pause size={14} />
+          <button type="button" className={styles.cancelBtn} onClick={onPause} aria-label={t("pause")} title={t("pause")}>
+            <Pause size={14} aria-hidden="true" />
           </button>
         )}
         {isActive && isPaused && onResume && (
-          <button className={styles.cancelBtn} onClick={onResume} title={t("resume")}>
-            <Play size={14} />
+          <button type="button" className={styles.cancelBtn} onClick={onResume} aria-label={t("resume")} title={t("resume")}>
+            <Play size={14} aria-hidden="true" />
           </button>
         )}
         {isActive && onCancel && (
-          <button className={styles.cancelBtn} onClick={onCancel} title={t("cancel")}>
-            <X size={14} />
+          <button type="button" className={styles.cancelBtn} onClick={onCancel} aria-label={t("cancel")} title={t("cancel")}>
+            <X size={14} aria-hidden="true" />
           </button>
         )}
       </div>
 
-      {/* Progress bar */}
-      <div className={styles.progressTrack}>
+      {/* Progress bar. role=progressbar + aria-valuenow is what makes the
+          percentage perceivable to a screen reader — a styled div width is not. */}
+      <div
+        className={styles.progressTrack}
+        role="progressbar"
+        aria-valuenow={job.progress}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-label={statusLabel}
+      >
         <div
           className={`${styles.progressBar} ${phase === "done" ? styles.progressDone : ""}`}
           style={{ width: `${job.progress}%` }}
         />
       </div>
 
-      <div className={styles.meta}>
+      {/* aria-live=polite announces each new stage message without interrupting
+          whatever the user is currently reading. */}
+      <div className={styles.meta} aria-live="polite" aria-atomic="true">
         <span className={styles.message}>{job.message}</span>
         <span className={styles.pct}>{job.progress}%</span>
       </div>
@@ -90,8 +98,8 @@ export function ProgressPanel({ job, phase, onCancel, onPause, onResume }: Props
             />
           </div>
           <span className={styles.currentFileBytes}>
-            {formatBytes(job.current_file.bytes_done)}
-            {job.current_file.bytes_total ? ` / ${formatBytes(job.current_file.bytes_total)}` : ""}
+            {formatProgressBytes(job.current_file.bytes_done)}
+            {job.current_file.bytes_total ? ` / ${formatProgressBytes(job.current_file.bytes_total)}` : ""}
           </span>
         </div>
       )}
