@@ -58,10 +58,11 @@ class JobStore:
         now = time.time()
         conn = self._connect()
         try:
-            existing = conn.execute(
-                "SELECT created_at FROM jobs WHERE job_id = ?", (job.job_id,)
-            ).fetchone()
-            created_at = existing[0] if existing else now
+            # Single statement: the previous SELECT-then-UPSERT was a
+            # read-modify-write with a gap, so two concurrent saves of the same
+            # job could each read "no row" and race on created_at. The UPSERT's
+            # DO UPDATE clause leaves created_at untouched, which preserves the
+            # original insertion time without needing to read it first.
             conn.execute(
                 """
                 INSERT INTO jobs (job_id, status, created_at, updated_at, state_json)
@@ -71,7 +72,7 @@ class JobStore:
                     updated_at = excluded.updated_at,
                     state_json = excluded.state_json
                 """,
-                (job.job_id, job.status.value, created_at, now, job.model_dump_json()),
+                (job.job_id, job.status.value, now, now, job.model_dump_json()),
             )
             conn.commit()
         finally:
