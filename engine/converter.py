@@ -6,17 +6,63 @@ from __future__ import annotations
 
 import asyncio
 from pathlib import Path
-from typing import Callable, Optional
+from typing import Awaitable, Callable, Optional
 
-from file_types import get_info, conversions_for, category_of
+from file_types import conversions_for, category_of
 
 
 class ConversionError(Exception):
     pass
 
 
-# Category → converter function name
-_CATEGORY_CONVERTER = {
+ConverterFn = Callable[[Path, str], Awaitable[Path]]
+
+
+# Converter name → loader. Imports stay lazy (pandas, Pillow and fonttools are
+# heavy and most jobs convert nothing) but the dispatch is now a lookup rather
+# than an if/elif ladder that had to be edited in two places — the category map
+# and the chain — every time a converter was added.
+def _load_document() -> ConverterFn:
+    from converters.document import convert_document
+    return convert_document
+
+
+def _load_image() -> ConverterFn:
+    from converters.image import convert_image
+    return convert_image
+
+
+def _load_media() -> ConverterFn:
+    from converters.media import convert_media
+    return convert_media
+
+
+def _load_data() -> ConverterFn:
+    from converters.data import convert_data
+    return convert_data
+
+
+def _load_font() -> ConverterFn:
+    from converters.font import convert_font
+    return convert_font
+
+
+def _load_subtitle() -> ConverterFn:
+    from converters.subtitle import convert_subtitle
+    return convert_subtitle
+
+
+_CONVERTER_LOADERS: dict[str, Callable[[], ConverterFn]] = {
+    "document": _load_document,
+    "image": _load_image,
+    "media": _load_media,
+    "data": _load_data,
+    "font": _load_font,
+    "subtitle": _load_subtitle,
+}
+
+# Category → converter name
+_CATEGORY_CONVERTER: dict[str, str] = {
     "text":         "document",
     "spreadsheet":  "data",
     "presentation": "document",    # pandoc handles pptx → pdf etc.
@@ -30,6 +76,13 @@ _CATEGORY_CONVERTER = {
     "code":         "document",    # highlight → html/pdf via pandoc
     "config":       "document",
 }
+
+# Every category must route to a converter that exists. Checked at import so a
+# typo is a startup failure, not a runtime surprise on one user's odd file.
+assert set(_CATEGORY_CONVERTER.values()) <= set(_CONVERTER_LOADERS), (
+    "_CATEGORY_CONVERTER references an unknown converter: "
+    f"{set(_CATEGORY_CONVERTER.values()) - set(_CONVERTER_LOADERS)}"
+)
 
 
 async def convert_file(
@@ -68,26 +121,8 @@ async def convert_file(
         )
 
     try:
-        if converter_name == "document":
-            from converters.document import convert_document
-            dest = await convert_document(src, target_ext)
-        elif converter_name == "image":
-            from converters.image import convert_image
-            dest = await convert_image(src, target_ext)
-        elif converter_name == "media":
-            from converters.media import convert_media
-            dest = await convert_media(src, target_ext)
-        elif converter_name == "data":
-            from converters.data import convert_data
-            dest = await convert_data(src, target_ext)
-        elif converter_name == "font":
-            from converters.font import convert_font
-            dest = await convert_font(src, target_ext)
-        elif converter_name == "subtitle":
-            from converters.subtitle import convert_subtitle
-            dest = await convert_subtitle(src, target_ext)
-        else:
-            raise ConversionError(f"Conversor desconhecido: {converter_name}")
+        convert = _CONVERTER_LOADERS[converter_name]()
+        dest = await convert(src, target_ext)
     except ConversionError:
         raise
     except Exception as e:

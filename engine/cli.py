@@ -229,8 +229,42 @@ def server(
 ):
     """Inicia o servidor da API (para a interface gráfica)."""
     import uvicorn
+    from config import settings
+
     console.print(f"[bold]PageCap API[/bold] rodando em http://{host}:{port}")
+    console.print(f"Docs: http://{host}:{port}/docs   ·   API: http://{host}:{port}/v1")
+
+    if host not in ("127.0.0.1", "localhost", "::1") and not settings.require_auth:
+        console.print(
+            "[bold red]AVISO:[/bold red] o servidor está exposto fora do loopback "
+            "com PAGECAP_REQUIRE_AUTH desligado. Qualquer um na rede tem acesso total."
+        )
     uvicorn.run("api:app", host=host, port=port, reload=reload)
+
+
+@app.command()
+def token(
+    show: bool = typer.Option(False, "--show", help="Exibe o token em texto claro"),
+):
+    """Mostra (ou cria) o token da API usado pelo servidor local.
+
+    A auth é obrigatória por padrão; este é o comando que dá ao usuário o valor
+    que o servidor está exigindo, sem precisar procurar o arquivo na mão.
+    """
+    from auth.tokens import resolve_api_token
+    from config import settings
+
+    value = resolve_api_token(settings.api_token, settings.token_file, settings.require_auth)
+    if value is None:
+        console.print("[yellow]Autenticação desativada (PAGECAP_REQUIRE_AUTH=0).[/yellow]")
+        raise typer.Exit()
+
+    console.print(f"[bold]Arquivo:[/bold] {settings.token_file}")
+    if show:
+        console.print(f"[bold]Token:[/bold] {value}")
+        console.print(f'\nExemplo:\n  curl -H "Authorization: Bearer {value}" \\\n       http://127.0.0.1:8765/v1/health')
+    else:
+        console.print(f"[bold]Token:[/bold] {value[:6]}… (use --show para exibir por completo)")
 
 
 if __name__ == "__main__":
