@@ -4,13 +4,16 @@ from __future__ import annotations
 import asyncio
 import json
 import re
-import subprocess
 import sys
 from pathlib import Path
 from typing import AsyncGenerator, Optional
-from urllib.parse import urlparse
 
 from models import ExtractedFile
+
+# yt-dlp will happily expand a channel/playlist URL into thousands of items.
+# --yes-playlist is deliberate (a "playlist" is often the thing the user wants),
+# but it needs a ceiling or one job can fill the disk. Overridable per call.
+_DEFAULT_MAX_DOWNLOADS = 50
 
 
 async def extract_media(
@@ -19,6 +22,7 @@ async def extract_media(
     content_types: list[str],
     quality: str = "best",
     cookies_file: Optional[Path] = None,
+    max_downloads: int = _DEFAULT_MAX_DOWNLOADS,
     progress_cb=None,
 ) -> AsyncGenerator[ExtractedFile, None]:
     """
@@ -31,7 +35,10 @@ async def extract_media(
     if not want_video and not want_audio:
         return
 
-    base_cmd = [sys.executable, "-m", "yt_dlp", "--no-warnings", "--print-json"]
+    base_cmd = [
+        sys.executable, "-m", "yt_dlp", "--no-warnings", "--print-json",
+        "--max-downloads", str(max(1, max_downloads)),
+    ]
 
     if cookies_file and cookies_file.exists():
         base_cmd += ["--cookies", str(cookies_file)]
