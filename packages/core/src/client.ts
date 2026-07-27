@@ -13,14 +13,27 @@ import {
 export class PageCapClient {
   private http: AxiosInstance;
   private baseUrl: string;
+  private apiToken?: string;
 
   constructor(baseUrl = "http://127.0.0.1:8765", apiToken?: string) {
     this.baseUrl = baseUrl;
+    this.apiToken = apiToken;
     this.http = axios.create({
       baseURL: baseUrl,
       timeout: 10_000,
       headers: apiToken ? { Authorization: `Bearer ${apiToken}` } : undefined,
     });
+  }
+
+  /**
+   * Appends the API token as a query parameter. Only for URLs handed to the
+   * browser directly (<a download>, <img src>, <video src>, WebSocket), which
+   * cannot carry an Authorization header. Every programmatic call uses the
+   * header instead.
+   */
+  private withToken(url: string): string {
+    if (!this.apiToken) return url;
+    return `${url}${url.includes("?") ? "&" : "?"}token=${encodeURIComponent(this.apiToken)}`;
   }
 
   async health(): Promise<HealthResponse> {
@@ -61,15 +74,15 @@ export class PageCapClient {
   }
 
   downloadUrl(jobId: string, filename: string): string {
-    return `${this.baseUrl}/jobs/${jobId}/download/${encodeURIComponent(filename)}`;
+    return this.withToken(`${this.baseUrl}/jobs/${jobId}/download/${encodeURIComponent(filename)}`);
   }
 
   downloadAllUrl(jobId: string): string {
-    return `${this.baseUrl}/jobs/${jobId}/download-all`;
+    return this.withToken(`${this.baseUrl}/jobs/${jobId}/download-all`);
   }
 
   previewUrl(jobId: string, filename: string): string {
-    return `${this.baseUrl}/jobs/${jobId}/preview/${encodeURIComponent(filename)}`;
+    return this.withToken(`${this.baseUrl}/jobs/${jobId}/preview/${encodeURIComponent(filename)}`);
   }
 
   // ── Credential profiles ────────────────────────────────────────────────
@@ -124,7 +137,8 @@ export class PageCapClient {
     onUpdate: (state: JobState) => void,
     onError?: (err: Event) => void,
   ): WebSocket {
-    const wsUrl = this.baseUrl.replace(/^http/, "ws") + `/ws/${jobId}`;
+    // The browser WebSocket API cannot set headers either, hence withToken.
+    const wsUrl = this.withToken(this.baseUrl.replace(/^http/, "ws") + `/ws/${jobId}`);
     const ws = new WebSocket(wsUrl);
 
     ws.onmessage = (evt) => {
