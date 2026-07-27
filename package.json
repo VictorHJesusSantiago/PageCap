@@ -17,10 +17,14 @@
     "build:ui": "npm run build --workspace=packages/ui",
     "build:electron": "npm run build --workspace=packages/electron",
     "install:python": "cd engine && pip install -r requirements.txt && playwright install chromium",
-    "lint": "npm run lint --workspace=packages/core && npm run lint --workspace=packages/ui"
+    "typecheck": "tsc --noEmit -p packages/core && tsc --noEmit -p packages/ui && tsc --noEmit -p packages/electron",
+    "test": "npm run test:engine && npm run test:core && npm run test:ui",
+    "test:engine": "cd engine && python -m pytest -q",
+    "test:core": "npm run test --workspace=packages/core",
+    "test:ui": "npm run test:coverage --workspace=packages/ui"
   },
   "devDependencies": {
-    "concurrently": "^9.0.0",
+    "concurrently": "^10.0.4",
     "typescript": "^5.6.0"
   }
 }
