@@ -115,9 +115,14 @@ async def extract_generic_media(
             if ext in _ALL_EXTS:
                 media_urls.add(full)
 
-    # Filter by wanted types
+    # Filter by wanted types. The scheme check is not redundant with the
+    # request-level validator: these URLs come from page markup, so a
+    # `<video src="file:///etc/passwd">` resolves to a file: URL here even
+    # though the *page* URL was http(s). Only real remote resources are fetched.
     filtered: set[str] = set()
     for mu in media_urls:
+        if urlparse(mu).scheme not in ("http", "https"):
+            continue
         ext = Path(urlparse(mu).path).suffix.lower()
         if want_audio and ext in _AUDIO_EXTS:
             filtered.add(mu)
