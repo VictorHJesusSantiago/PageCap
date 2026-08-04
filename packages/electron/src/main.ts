@@ -7,11 +7,6 @@ import fs from "fs";
 const isDev = process.env.NODE_ENV !== "production";
 const API_PORT = 8765;
 
-// The packaged renderer loads over file://, so its Origin header is the literal
-// string "null" — and so is the Origin of a sandboxed iframe on any website.
-// The engine therefore only honours Origin: null when explicitly told to, and
-// we pair that with a per-launch bearer token so a hostile page that fakes the
-// origin still can't touch the API. See engine/api.py's CORS block.
 const API_TOKEN = crypto.randomBytes(32).toString("hex");
 
 let mainWindow: BrowserWindow | null = null;
@@ -59,7 +54,6 @@ async function startApiServer(): Promise<void> {
   apiProcess.stdout?.on("data", (d: Buffer) => console.log("[API]", d.toString().trim()));
   apiProcess.stderr?.on("data", (d: Buffer) => console.error("[API]", d.toString().trim()));
 
-  // Wait for API to be ready
   await waitForApi();
 }
 
@@ -96,11 +90,9 @@ function createWindow() {
       contextIsolation: true,
       nodeIntegration: false,
     },
-    // Frameless look
     titleBarStyle: process.platform === "darwin" ? "hiddenInset" : "default",
   });
 
-  // Inject API base URL + this launch's token for the renderer.
   mainWindow.webContents.on("did-finish-load", () => {
     mainWindow?.webContents.executeJavaScript(
       `window.__PAGECAP_API__ = "http://127.0.0.1:${API_PORT}";` +
@@ -108,9 +100,6 @@ function createWindow() {
     );
   });
 
-  // The renderer only ever needs the bundled UI and the local API. Anything
-  // else — a redirect, an <a target="_blank"> in extracted content — goes to
-  // the user's real browser instead of becoming a window with preload access.
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     if (/^https?:\/\//.test(url)) shell.openExternal(url);
     return { action: "deny" };
@@ -133,23 +122,17 @@ function createWindow() {
   mainWindow.on("closed", () => { mainWindow = null; });
 }
 
-// IPC: open output folder in system file explorer.
-// shell.openPath on a *file* asks the OS to launch it with its default handler
-// — i.e. execute it. Restrict this channel to directories, which is all the UI
-// ever passes and all it needs.
 ipcMain.handle("open-folder", async (_event, folderPath: string) => {
   if (typeof folderPath !== "string" || !fs.existsSync(folderPath)) return;
   if (!fs.statSync(folderPath).isDirectory()) return;
   await shell.openPath(path.resolve(folderPath));
 });
 
-// IPC: choose output directory
 ipcMain.handle("choose-directory", async () => {
   const result = await dialog.showOpenDialog({ properties: ["openDirectory"] });
   return result.canceled ? null : result.filePaths[0];
 });
 
-// IPC: native desktop notification (job completion, etc.)
 ipcMain.handle("notify", async (_event, title: string, body: string) => {
   if (Notification.isSupported()) {
     new Notification({ title, body }).show();

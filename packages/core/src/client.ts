@@ -25,12 +25,6 @@ export class PageCapClient {
     });
   }
 
-  /**
-   * Appends the API token as a query parameter. Only for URLs handed to the
-   * browser directly (<a download>, <img src>, <video src>, WebSocket), which
-   * cannot carry an Authorization header. Every programmatic call uses the
-   * header instead.
-   */
   private withToken(url: string): string {
     if (!this.apiToken) return url;
     return `${url}${url.includes("?") ? "&" : "?"}token=${encodeURIComponent(this.apiToken)}`;
@@ -85,7 +79,6 @@ export class PageCapClient {
     return this.withToken(`${this.baseUrl}/jobs/${jobId}/preview/${encodeURIComponent(filename)}`);
   }
 
-  // ── Credential profiles ────────────────────────────────────────────────
   async saveCredentialProfile(profile: CredentialProfile): Promise<void> {
     await this.http.post("/credentials", profile);
   }
@@ -99,7 +92,6 @@ export class PageCapClient {
     await this.http.delete(`/credentials/${encodeURIComponent(name)}`);
   }
 
-  // ── Job templates ───────────────────────────────────────────────────────
   async saveTemplate(template: JobTemplate): Promise<void> {
     await this.http.post("/templates", template);
   }
@@ -118,7 +110,6 @@ export class PageCapClient {
     await this.http.delete(`/templates/${encodeURIComponent(name)}`);
   }
 
-  // ── Recurring schedules ─────────────────────────────────────────────────
   async saveSchedule(schedule: ScheduleConfig): Promise<void> {
     await this.http.post("/schedules", schedule);
   }
@@ -137,7 +128,6 @@ export class PageCapClient {
     onUpdate: (state: JobState) => void,
     onError?: (err: Event) => void,
   ): WebSocket {
-    // The browser WebSocket API cannot set headers either, hence withToken.
     const wsUrl = this.withToken(this.baseUrl.replace(/^http/, "ws") + `/ws/${jobId}`);
     const ws = new WebSocket(wsUrl);
 
@@ -149,7 +139,7 @@ export class PageCapClient {
           ws.close();
         }
       } catch {
-        // ignore malformed frames
+        return;
       }
     };
 
