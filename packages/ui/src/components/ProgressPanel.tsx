@@ -13,8 +13,6 @@ interface Props {
   onResume?: () => void;
 }
 
-/** In a progress readout a falsy size means "nothing transferred yet", not
- * "unknown", so the shared helper's default fallback is overridden. */
 const formatProgressBytes = (b?: number | null) => formatBytes(b, "0 B");
 
 export function ProgressPanel({ job, phase, onCancel, onPause, onResume }: Props) {
@@ -60,8 +58,7 @@ export function ProgressPanel({ job, phase, onCancel, onPause, onResume }: Props
         )}
       </div>
 
-      {/* Progress bar. role=progressbar + aria-valuenow is what makes the
-          percentage perceivable to a screen reader — a styled div width is not. */}
+      {}
       <div
         className={styles.progressTrack}
         role="progressbar"
@@ -76,14 +73,11 @@ export function ProgressPanel({ job, phase, onCancel, onPause, onResume }: Props
         />
       </div>
 
-      {/* aria-live=polite announces each new stage message without interrupting
-          whatever the user is currently reading. */}
       <div className={styles.meta} aria-live="polite" aria-atomic="true">
         <span className={styles.message}>{job.message}</span>
         <span className={styles.pct}>{job.progress}%</span>
       </div>
 
-      {/* Byte-level progress of whichever file is downloading right now */}
       {isActive && job.current_file && (
         <div className={styles.currentFile}>
           <span className={styles.currentFileName}>{job.current_file.filename}</span>
@@ -132,9 +126,6 @@ export function ProgressPanel({ job, phase, onCancel, onPause, onResume }: Props
         </div>
       )}
 
-      {/* Per-file feed: shows each asset the instant it lands, most recent
-          first, so progress reads as concrete files rather than only a
-          percentage. */}
       {isActive && job.files.length > 0 && (
         <div className={styles.fileFeed}>
           {[...job.files].reverse().slice(0, 8).map((f, i) => (

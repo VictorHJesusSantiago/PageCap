@@ -13,9 +13,7 @@ export function ThemeToggle({ theme, onToggle }: Props) {
   const { t } = useI18n();
   const label = t("a11yToggleTheme");
   return (
-    // `title` is a tooltip, not an accessible name — it is unreliable for
-    // screen readers and invisible to touch users. aria-label is what actually
-    // names an icon-only control, and aria-pressed conveys its state.
+
     <button
       type="button"
       className={styles.btn}

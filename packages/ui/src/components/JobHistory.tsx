@@ -37,7 +37,7 @@ export function JobHistory({ onSelect, activeJobId }: Props) {
       const list = await client.listJobs();
       setJobs(list);
     } catch {
-      // API offline — leave the list as-is rather than clearing it.
+
     } finally {
       setLoading(false);
     }
