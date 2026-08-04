@@ -34,7 +34,6 @@ function job(overrides: Partial<JobState> = {}): JobState {
   } as JobState;
 }
 
-/** Captures the callbacks watchJob was given so a test can push updates. */
 function stubWatch() {
   const socket = { close: vi.fn() };
   let onUpdate: ((s: JobState) => void) | undefined;

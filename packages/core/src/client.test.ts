@@ -30,8 +30,6 @@ describe("URL builders with a token", () => {
   const client = new PageCapClient(BASE, TOKEN);
 
   it("appends the token to browser-fetched URLs, which cannot send headers", () => {
-    // <a download> / <img src> / <video src> have no way to set Authorization,
-    // so these specific URLs carry the token as a query parameter.
     expect(client.downloadUrl("j1", "a.png")).toBe(
       `${BASE}/jobs/j1/download/a.png?token=tok-123%2Fabc%2Bdef`,
     );

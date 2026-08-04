@@ -48,7 +48,7 @@ describe("pure helpers", () => {
   });
 
   it("lets the caller override the falsy fallback", () => {
-    // A progress readout means "nothing transferred yet", not "unknown size".
+
     expect(formatBytes(0, "0 B")).toBe("0 B");
     expect(formatBytes(undefined, "0 B")).toBe("0 B");
   });
@@ -104,13 +104,9 @@ describe("selection state is keyed by filename, not row index", () => {
       />,
     );
 
-    // Select the PDF (row index 1 while unfiltered).
     await user.click(screen.getByRole("checkbox", { name: /second\.pdf/ }));
     expect(screen.getByRole("checkbox", { name: /second\.pdf/ })).toHaveAttribute("aria-checked", "true");
 
-    // Filtering to images leaves only first.jpg, which was row index 0 before.
-    // With an index key, React reused the PDF's DOM node here and the JPEG
-    // showed up already checked.
     await user.click(screen.getByRole("button", { name: /^Imagens/ }));
     expect(screen.getByRole("checkbox", { name: /first\.jpg/ })).toHaveAttribute("aria-checked", "false");
   });
@@ -174,7 +170,6 @@ describe("preview modal accessibility", () => {
     await user.click(screen.getByRole("button", { name: /Pré-visualizar arquivo/ }));
     const dialog = screen.getByRole("dialog");
 
-    // However many times Tab is pressed, focus must stay inside the dialog.
     for (let i = 0; i < 6; i++) await user.tab();
     expect(dialog.contains(document.activeElement)).toBe(true);
   });
@@ -213,8 +208,6 @@ describe("downloads", () => {
     await user.click(screen.getByRole("button", { name: /Selecionar todos/ }));
     await user.click(screen.getByRole("button", { name: /Baixar selecionados/ }));
 
-    // The guarantee is that they are spread across ticks, not that all of them
-    // are deferred — the first is scheduled at offset 0 and fires immediately.
     expect(clicks).toEqual(["a.jpg"]);
 
     await vi.advanceTimersByTimeAsync(250);

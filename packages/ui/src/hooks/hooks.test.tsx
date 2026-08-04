@@ -232,9 +232,7 @@ describe("i18n", () => {
   });
 
   it("throws when used outside the provider, instead of silently rendering keys", () => {
-    // React re-throws render errors through a jsdom "error" event as well as
-    // console.error, so both channels are muted for this deliberate failure —
-    // otherwise a passing suite prints an alarming stack trace.
+
     const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     const swallow = (e: ErrorEvent) => e.preventDefault();
     window.addEventListener("error", swallow);
@@ -247,8 +245,7 @@ describe("i18n", () => {
   });
 
   it("keeps both dictionaries in sync", () => {
-    // A key present in one language and missing in the other renders as a raw
-    // key for half the users — the kind of thing only a test notices.
+
     expect(Object.keys(DICTIONARIES["pt-BR"]).sort()).toEqual(
       Object.keys(DICTIONARIES["en-US"]).sort(),
     );

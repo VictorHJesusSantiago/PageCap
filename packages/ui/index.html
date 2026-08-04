@@ -3,13 +3,6 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <!--
-      CSP for the renderer. `connect-src` is the only network permission the app
-      needs: the local API over http and ws. `img-src` allows data: because
-      thumbnails are inlined as data: URIs (see engine/thumbnails.py).
-      No 'unsafe-eval'; 'unsafe-inline' on style-src is required by CSS Modules'
-      runtime injection during dev.
-    -->
     <meta
       http-equiv="Content-Security-Policy"
       content="default-src 'self';
