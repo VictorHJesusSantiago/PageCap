@@ -23,30 +23,30 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">98.68% </span>
+                <span class="strong">98.27% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>75/76</span>
+                <span class='fraction'>57/58</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">87.32% </span>
+                <span class="strong">82% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>62/71</span>
+                <span class='fraction'>41/50</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
                 <span class="strong">100% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>24/24</span>
+                <span class='fraction'>22/22</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
                 <span class="strong">100% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>62/62</span>
+                <span class='fraction'>52/52</span>
             </div>
         
             
@@ -342,22 +342,8 @@
 <a name='L277'></a><a href='#L277'>277</a>
 <a name='L278'></a><a href='#L278'>278</a>
 <a name='L279'></a><a href='#L279'>279</a>
-<a name='L280'></a><a href='#L280'>280</a>
-<a name='L281'></a><a href='#L281'>281</a>
-<a name='L282'></a><a href='#L282'>282</a>
-<a name='L283'></a><a href='#L283'>283</a>
-<a name='L284'></a><a href='#L284'>284</a>
-<a name='L285'></a><a href='#L285'>285</a>
-<a name='L286'></a><a href='#L286'>286</a>
-<a name='L287'></a><a href='#L287'>287</a>
-<a name='L288'></a><a href='#L288'>288</a>
-<a name='L289'></a><a href='#L289'>289</a>
-<a name='L290'></a><a href='#L290'>290</a>
-<a name='L291'></a><a href='#L291'>291</a>
-<a name='L292'></a><a href='#L292'>292</a>
-<a name='L293'></a><a href='#L293'>293</a>
-<a name='L294'></a><a href='#L294'>294</a>
-<a name='L295'></a><a href='#L295'>295</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<a name='L280'></a><a href='#L280'>280</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -382,22 +368,6 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">81x</span>
-<span class="cline-any cline-yes">64x</span>
-<span class="cline-any cline-yes">9x</span>
-<span class="cline-any cline-yes">5x</span>
-<span class="cline-any cline-yes">4x</span>
-<span class="cline-any cline-yes">3x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">74x</span>
-<span class="cline-any cline-yes">72x</span>
-<span class="cline-any cline-yes">71x</span>
-<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
@@ -655,6 +625,7 @@
 import { ExtractedFile } from "@pagecap/core";
 import { Download, FileText, Film, Music, Image, File, FolderOpen, Archive, X, CheckSquare, Square } from "lucide-react";
 import { useModalA11y } from "../hooks/useModalA11y";
+import { formatBytes, getFileCategory } from "../format";
 import { useI18n } from "../i18n";
 import styles from "./FileList.module.css";
 &nbsp;
@@ -677,22 +648,6 @@ const FILE_ICONS: Record&lt;string, React.ReactNode&gt; = {
   document: &lt;File size={16} /&gt;,
   other: &lt;File size={16} /&gt;,
 };
-&nbsp;
-export function getFileCategory(ct: string): string {
-  if (ct.includes("pdf")) return "pdf";
-  if (ct.startsWith("image/")) return "image";
-  if (ct.startsWith("video/")) return "video";
-  if (ct.startsWith("audio/")) return "audio";
-  if (ct.includes("word") || ct.includes("excel") || ct.includes("powerpoint") || ct.includes("spreadsheet") || ct.includes("presentation")) return "document";
-  return "other";
-}
-&nbsp;
-export function formatBytes(b?: number): string {
-  if (!b) return "?";
-  if (b &lt; 1024) return `${b} B`;
-  if (b &lt; 1024 * 1024) return `${(b / 1024).toFixed(1)} KB`;
-  return `${(b / (1024 * 1024)).toFixed(2)} MB`;
-}
 &nbsp;
 const FILTERS: { value: Filter; labelKey: string }[] = [
   { value: "all", labelKey: "filterAll" },
@@ -952,7 +907,7 @@ export function FileList({ files, outputDir, getDownloadUrl, getPreviewUrl, getD
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-07-26T14:44:20.321Z
+                at 2026-07-27T14:50:55.680Z
             </div>
         <script src="../../prettify.js"></script>
         <script>
