@@ -25,21 +25,21 @@ from download import download_with_retry, run_bounded
 _MEDIA_EXTS = {
     ".mp4", ".webm", ".mkv", ".avi", ".mov", ".m4v", ".ogv",
     ".mp3", ".wav", ".ogg", ".flac", ".aac", ".m4a", ".opus",
-    ".ts",  # HLS transport stream segment
+    ".ts",
 }
 
 _MEDIA_MIME_PREFIXES = [
     "video/",
     "audio/",
-    "application/x-mpegurl",       # HLS
-    "application/vnd.apple.mpegurl",  # HLS
-    "application/dash+xml",         # MPEG-DASH
-    "application/octet-stream",     # generic binary (check extension)
+    "application/x-mpegurl",
+    "application/vnd.apple.mpegurl",
+    "application/dash+xml",
+    "application/octet-stream",
 ]
 
 _PLAYLIST_EXTS = {".m3u8", ".m3u", ".mpd"}
 
-_MIN_MEDIA_BYTES = 10_000  # ignore tiny fragments / tracking pixels
+_MIN_MEDIA_BYTES = 10_000
 
 
 async def extract_via_network(
@@ -64,7 +64,7 @@ async def extract_via_network(
     if not want_video and not want_audio:
         return
 
-    captured: dict[str, str] = {}   # url → mime-type
+    captured: dict[str, str] = {}
 
     def _on_request(request: Request):
         req_url = request.url
@@ -86,7 +86,6 @@ async def extract_via_network(
 
     page.on("request", _on_request)
 
-    # Also intercept responses to catch mime types we missed in requests
     captured_responses: dict[str, str] = {}
 
     async def _on_response(response):
@@ -99,9 +98,8 @@ async def extract_via_network(
     try:
         await page.goto(url, wait_until=wait_until, timeout=wait_timeout_ms)
     except Exception:
-        pass  # page may throw on some sites; we still collected requests
+        pass
 
-    # Let page settle and auto-play content
     await asyncio.sleep(wait_seconds)
 
     page.remove_listener("request", _on_request)
@@ -112,7 +110,6 @@ async def extract_via_network(
     if not all_urls:
         return
 
-    # Build download headers
     headers: dict[str, str] = {"Referer": url}
     if cookies:
         headers["Cookie"] = build_cookie_header(cookies)
@@ -129,7 +126,6 @@ async def extract_via_network(
             continue
         ext = Path(parsed.path.split("?")[0]).suffix.lower()
 
-        # Collect playlists for later ffmpeg mux
         if ext in _PLAYLIST_EXTS or "mpegurl" in mime or "dash" in mime:
             playlists.append(media_url)
             continue
@@ -177,7 +173,6 @@ async def extract_via_network(
                 if result is not None:
                     yield result
 
-    # Download and mux HLS/DASH playlists with ffmpeg
     for pl_url in playlists:
         parsed = urlparse(pl_url)
         if parsed.scheme not in ("http", "https"):
@@ -208,13 +203,6 @@ async def extract_via_network(
             )
 
 
-# A playlist is attacker-controlled content: PageCap fetches .m3u8/.mpd files
-# from whatever page it was pointed at. ffmpeg will happily follow a segment
-# URI of `file:///etc/passwd` (or `...\pagecap.db`) and mux the bytes into the
-# output file, which then lands in downloads/ and is served by the API — a
-# read-anything primitive handed to any website. Constrain ffmpeg to network
-# protocols only. `file` and `concat` are the dangerous ones and are absent
-# here by design; do not add them.
 _FFMPEG_PROTOCOL_WHITELIST = "http,https,tcp,tls,crypto,httpproxy"
 
 
@@ -222,8 +210,6 @@ async def _ffmpeg_download(url: str, dest: Path, headers: dict[str, str]) -> boo
     """Use ffmpeg to download and mux an HLS/DASH stream."""
     header_args: list[str] = []
     for k, v in headers.items():
-        # CR/LF in a header value would let a crafted URL (Referer) or cookie
-        # smuggle extra request headers into every segment fetch.
         clean = str(v).replace("\r", "").replace("\n", "")
         header_args += ["-headers", f"{k}: {clean}\r\n"]
 

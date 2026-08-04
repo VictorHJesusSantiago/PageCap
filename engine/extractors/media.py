@@ -10,9 +10,6 @@ from typing import AsyncGenerator, Optional
 
 from models import ExtractedFile
 
-# yt-dlp will happily expand a channel/playlist URL into thousands of items.
-# --yes-playlist is deliberate (a "playlist" is often the thing the user wants),
-# but it needs a ceiling or one job can fill the disk. Overridable per call.
 _DEFAULT_MAX_DOWNLOADS = 50
 
 
@@ -92,7 +89,6 @@ async def extract_media(
 
         await proc.wait()
 
-        # Fallback: yield only files that appeared during this yt-dlp run
         if not downloaded_files:
             for f in output_dir.glob(f"*.{ext}"):
                 if f not in pre_existing:
