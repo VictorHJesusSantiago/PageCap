@@ -58,11 +58,6 @@ class JobStore:
         now = time.time()
         conn = self._connect()
         try:
-            # Single statement: the previous SELECT-then-UPSERT was a
-            # read-modify-write with a gap, so two concurrent saves of the same
-            # job could each read "no row" and race on created_at. The UPSERT's
-            # DO UPDATE clause leaves created_at untouched, which preserves the
-            # original insertion time without needing to read it first.
             conn.execute(
                 """
                 INSERT INTO jobs (job_id, status, created_at, updated_at, state_json)

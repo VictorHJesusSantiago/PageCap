@@ -10,15 +10,14 @@ from typing import Optional
 
 @dataclass
 class FileTypeInfo:
-    ext: str                        # canonical extension (with dot)
-    mime: str                       # primary MIME type
-    label: str                      # human-readable name
-    category: str                   # top-level category
-    aliases: list[str] = field(default_factory=list)   # alternative extensions
-    can_convert_to: list[str] = field(default_factory=list)  # target extensions
+    ext: str
+    mime: str
+    label: str
+    category: str
+    aliases: list[str] = field(default_factory=list)
+    can_convert_to: list[str] = field(default_factory=list)
 
 
-# ─── Registry ────────────────────────────────────────────────────────────────
 REGISTRY: dict[str, FileTypeInfo] = {}
 
 def _r(info: FileTypeInfo):
@@ -26,7 +25,6 @@ def _r(info: FileTypeInfo):
     for alias in info.aliases:
         REGISTRY[alias] = info
 
-# ── Text / Documents ──────────────────────────────────────────────────────────
 _r(FileTypeInfo(".txt",  "text/plain",           "Texto puro",           "text",
     can_convert_to=[".md", ".html", ".pdf", ".docx", ".odt", ".rtf", ".epub"]))
 _r(FileTypeInfo(".md",   "text/markdown",        "Markdown",             "text",
@@ -52,7 +50,6 @@ _r(FileTypeInfo(".mobi", "application/x-mobipocket-ebook", "MOBI",       "text",
 _r(FileTypeInfo(".pages","application/x-iwork-pages-sffpages","Apple Pages","text"))
 _r(FileTypeInfo(".log",  "text/plain",           "Log",                  "text"))
 
-# ── Spreadsheets ─────────────────────────────────────────────────────────────
 _r(FileTypeInfo(".csv",  "text/csv",             "CSV",                  "spreadsheet",
     can_convert_to=[".xlsx", ".ods", ".json", ".parquet", ".tsv", ".html"]))
 _r(FileTypeInfo(".tsv",  "text/tab-separated-values", "TSV",             "spreadsheet",
@@ -61,14 +58,11 @@ _r(FileTypeInfo(".xls",  "application/vnd.ms-excel", "Excel (legado)",   "spread
     can_convert_to=[".xlsx", ".csv", ".ods", ".json", ".parquet"]))
 _r(FileTypeInfo(".xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     "Excel (moderno)", "spreadsheet",
-    # No ".xls": pandas dropped the xlwt writer in 2.0, so advertising it would
-    # promise a conversion converters/data.py cannot perform.
     can_convert_to=[".csv", ".ods", ".json", ".parquet", ".html"]))
 _r(FileTypeInfo(".ods",  "application/vnd.oasis.opendocument.spreadsheet","OpenDocument Spreadsheet","spreadsheet",
     can_convert_to=[".xlsx", ".csv", ".json"]))
 _r(FileTypeInfo(".numbers","application/x-iwork-numbers-sffnumbers","Apple Numbers","spreadsheet"))
 
-# ── Presentations ─────────────────────────────────────────────────────────────
 _r(FileTypeInfo(".ppt",  "application/vnd.ms-powerpoint", "PowerPoint (legado)", "presentation",
     can_convert_to=[".pptx", ".pdf", ".odp"]))
 _r(FileTypeInfo(".pptx", "application/vnd.openxmlformats-officedocument.presentationml.presentation",
@@ -76,15 +70,8 @@ _r(FileTypeInfo(".pptx", "application/vnd.openxmlformats-officedocument.presenta
     can_convert_to=[".pdf", ".odp", ".html"]))
 _r(FileTypeInfo(".odp",  "application/vnd.oasis.opendocument.presentation","OpenDocument Presentation","presentation",
     can_convert_to=[".pptx", ".pdf"]))
-# NB: ".key" is claimed twice in the wild — Apple Keynote and PEM private keys.
-# The certificate block below registers ".key" and, being later, wins the
-# REGISTRY slot. Keynote therefore uses its package extension instead, so the
-# two entries no longer silently overwrite each other. Do not re-add a bare
-# ".key" here: it would flip every private key into the "presentation"
-# category and hand it to the pandoc converter.
 _r(FileTypeInfo(".keynote", "application/x-iwork-keynote-sffkey", "Apple Keynote", "presentation"))
 
-# ── Raster Images ─────────────────────────────────────────────────────────────
 _img = [".jpg",".jpeg",".png",".gif",".bmp",".webp",".tiff",".tif",".avif",".heic",".heif",".ico"]
 _r(FileTypeInfo(".jpg",  "image/jpeg",  "JPEG",   "image", aliases=[".jpeg"],
     can_convert_to=[x for x in _img if x not in (".jpg",".jpeg")]+[".pdf",".webp",".avif"]))
@@ -112,7 +99,6 @@ _r(FileTypeInfo(".raw",  "image/x-raw", "RAW (câmera)", "image",
 _r(FileTypeInfo(".xcf",  "image/x-xcf", "GIMP XCF","image",
     can_convert_to=[".png",".jpg"]))
 
-# ── Vector Images ─────────────────────────────────────────────────────────────
 _r(FileTypeInfo(".svg",  "image/svg+xml","SVG",   "vector",
     can_convert_to=[".png",".pdf",".jpg",".eps"]))
 _r(FileTypeInfo(".eps",  "application/postscript","EPS","vector",
@@ -123,7 +109,6 @@ _r(FileTypeInfo(".wmf",  "image/wmf",   "WMF/EMF","vector", aliases=[".emf"],
     can_convert_to=[".png",".svg"]))
 _r(FileTypeInfo(".sketch","application/octet-stream","Sketch","vector"))
 
-# ── Audio ─────────────────────────────────────────────────────────────────────
 _aud = [".mp3",".wav",".ogg",".flac",".aac",".m4a",".wma",".opus",".aiff",".aif"]
 _r(FileTypeInfo(".mp3",  "audio/mpeg",      "MP3",     "audio",
     can_convert_to=[x for x in _aud if x != ".mp3"]))
@@ -146,7 +131,6 @@ _r(FileTypeInfo(".aiff", "audio/aiff",      "AIFF",    "audio", aliases=[".aif"]
 _r(FileTypeInfo(".mid",  "audio/midi",      "MIDI",    "audio", aliases=[".midi"]))
 _r(FileTypeInfo(".ra",   "audio/x-realaudio","RealAudio","audio"))
 
-# ── Video ─────────────────────────────────────────────────────────────────────
 _vid = [".mp4",".avi",".mkv",".mov",".wmv",".webm",".ogv",".3gp",".ts",".flv"]
 _r(FileTypeInfo(".mp4",  "video/mp4",        "MPEG-4",    "video", aliases=[".m4v"],
     can_convert_to=[x for x in _vid if x != ".mp4"]+[".mp3",".gif"]))
@@ -172,13 +156,10 @@ _r(FileTypeInfo(".vob",  "video/dvd",         "VOB (DVD)", "video",
     can_convert_to=[".mp4",".mkv"]))
 _r(FileTypeInfo(".rm",   "application/vnd.rn-realmedia","RealMedia","video", aliases=[".rmvb"]))
 
-# ── Code ──────────────────────────────────────────────────────────────────────
 _code = {
     ".html": ("text/html","HTML"), ".htm": ("text/html","HTML"),
     ".css":  ("text/css","CSS"),
     ".js":   ("text/javascript","JavaScript"), ".mjs": ("text/javascript","JS Module"),
-    # .ts is intentionally absent: it is registered as MPEG-TS video above.
-    # TypeScript source files are not downloadable web assets.
     ".jsx":  ("text/jsx","JSX"), ".tsx": ("text/tsx","TSX"),
     ".json": ("application/json","JSON"),
     ".xml":  ("application/xml","XML"),
@@ -210,7 +191,6 @@ for _ext, (_mime, _label) in _code.items():
     _r(FileTypeInfo(_ext, _mime, _label, "code",
         can_convert_to=[".html", ".pdf", ".txt"] if _ext not in (".html",".htm") else [".pdf",".txt"]))
 
-# ── Executables / Binaries ────────────────────────────────────────────────────
 for _ext, _mime, _label in [
     (".exe","application/x-msdownload","Executável Windows"),
     (".msi","application/x-msi","Instalador Windows"),
@@ -232,7 +212,6 @@ for _ext, _mime, _label in [
 ]:
     _r(FileTypeInfo(_ext, _mime, _label, "executable"))
 
-# ── Archives / Compression ────────────────────────────────────────────────────
 _arc = [".zip",".rar",".7z",".tar",".tar.gz",".tgz",".tar.bz2",".tbz2",".tar.xz",".txz",
         ".gz",".bz2",".xz",".zst",".br",".cab",".iso",".img"]
 for _ext, _mime, _label in [
@@ -255,7 +234,6 @@ for _ext, _mime, _label in [
     _r(FileTypeInfo(_ext, _mime, _label, "archive",
         can_convert_to=[".zip"] if _ext not in (".zip",".iso",".img") else []))
 
-# ── Data / Databases ─────────────────────────────────────────────────────────
 for _ext, _mime, _label, _to in [
     (".sqlite","application/vnd.sqlite3","SQLite",[".csv",".json"]),
     (".sqlite3","application/vnd.sqlite3","SQLite3",[".csv",".json"]),
@@ -275,7 +253,6 @@ for _ext, _mime, _label, _to in [
 ]:
     _r(FileTypeInfo(_ext, _mime, _label, "data", can_convert_to=_to))
 
-# ── Fonts ─────────────────────────────────────────────────────────────────────
 for _ext, _mime, _label, _to in [
     (".ttf","font/ttf","TrueType",[".otf",".woff",".woff2"]),
     (".otf","font/otf","OpenType",[".ttf",".woff",".woff2"]),
@@ -286,7 +263,6 @@ for _ext, _mime, _label, _to in [
 ]:
     _r(FileTypeInfo(_ext, _mime, _label, "font", can_convert_to=_to))
 
-# ── 3D Models ─────────────────────────────────────────────────────────────────
 for _ext, _mime, _label, _to in [
     (".obj","model/obj","Wavefront OBJ",[".stl",".gltf",".glb"]),
     (".fbx","application/octet-stream","FBX",[".gltf",".obj",".stl"]),
@@ -300,7 +276,6 @@ for _ext, _mime, _label, _to in [
 ]:
     _r(FileTypeInfo(_ext, _mime, _label, "3d", can_convert_to=_to))
 
-# ── Certificates / Crypto ─────────────────────────────────────────────────────
 for _ext, _mime, _label in [
     (".pem","application/x-pem-file","PEM"),
     (".crt","application/x-x509-ca-cert","Certificado X.509"),
@@ -314,7 +289,6 @@ for _ext, _mime, _label in [
 ]:
     _r(FileTypeInfo(_ext, _mime, _label, "certificate"))
 
-# ── Subtitles ─────────────────────────────────────────────────────────────────
 for _ext, _mime, _label, _to in [
     (".srt","text/plain","SubRip",[".vtt",".ass",".ttml"]),
     (".vtt","text/vtt","WebVTT",[".srt",".ass"]),
@@ -325,7 +299,6 @@ for _ext, _mime, _label, _to in [
 ]:
     _r(FileTypeInfo(_ext, _mime, _label, "subtitle", can_convert_to=_to))
 
-# ── ML / AI Models ────────────────────────────────────────────────────────────
 for _ext, _mime, _label in [
     (".onnx","application/octet-stream","ONNX"),
     (".pt","application/octet-stream","PyTorch"), (".pth","application/octet-stream","PyTorch"),
@@ -339,7 +312,6 @@ for _ext, _mime, _label in [
 ]:
     _r(FileTypeInfo(_ext, _mime, _label, "ml"))
 
-# ── Config ────────────────────────────────────────────────────────────────────
 for _ext, _mime, _label, _to in [
     (".ini","text/plain","INI",[".toml",".yaml",".json"]),
     (".cfg","text/plain","Config",[".toml",".yaml",".json"]),
@@ -351,7 +323,6 @@ for _ext, _mime, _label, _to in [
 ]:
     _r(FileTypeInfo(_ext, _mime, _label, "config", can_convert_to=_to))
 
-# ── Build / System ────────────────────────────────────────────────────────────
 for _ext, _mime, _label in [
     (".dockerfile","text/plain","Dockerfile"),
     (".lock","text/plain","Lock file"),
@@ -364,11 +335,8 @@ for _ext, _mime, _label in [
     _r(FileTypeInfo(_ext, _mime, _label, "config"))
 
 
-# ─── Helpers ─────────────────────────────────────────────────────────────────
-
 ALL_EXTENSIONS: frozenset[str] = frozenset(REGISTRY.keys())
 
-# MIME → list[ext] lookup
 MIME_TO_EXTS: dict[str, list[str]] = {}
 for _ext, _info in REGISTRY.items():
     MIME_TO_EXTS.setdefault(_info.mime, []).append(_ext)
