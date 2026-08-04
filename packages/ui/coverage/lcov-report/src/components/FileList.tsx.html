@@ -329,20 +329,7 @@
 <a name='L264'></a><a href='#L264'>264</a>
 <a name='L265'></a><a href='#L265'>265</a>
 <a name='L266'></a><a href='#L266'>266</a>
-<a name='L267'></a><a href='#L267'>267</a>
-<a name='L268'></a><a href='#L268'>268</a>
-<a name='L269'></a><a href='#L269'>269</a>
-<a name='L270'></a><a href='#L270'>270</a>
-<a name='L271'></a><a href='#L271'>271</a>
-<a name='L272'></a><a href='#L272'>272</a>
-<a name='L273'></a><a href='#L273'>273</a>
-<a name='L274'></a><a href='#L274'>274</a>
-<a name='L275'></a><a href='#L275'>275</a>
-<a name='L276'></a><a href='#L276'>276</a>
-<a name='L277'></a><a href='#L277'>277</a>
-<a name='L278'></a><a href='#L278'>278</a>
-<a name='L279'></a><a href='#L279'>279</a>
-<a name='L280'></a><a href='#L280'>280</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<a name='L267'></a><a href='#L267'>267</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -379,11 +366,7 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -474,8 +457,6 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">174x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -523,14 +504,7 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -658,12 +632,8 @@ const FILTERS: { value: Filter; labelKey: string }[] = [
   { value: "document", labelKey: "filterDocument" },
 ];
 &nbsp;
-// Media that can render inline in a preview modal without a plugin. Mirrors
-// the server's inline allowlist in api.py — anything else is served as an
-// attachment, so offering a preview for it would just download the file.
 const PREVIEWABLE = new Set(["image", "video", "audio"]);
 &nbsp;
-// Browsers block rapid programmatic downloads fired in the same tick.
 const DOWNLOAD_STAGGER_MS = 250;
 &nbsp;
 export function FileList({ files, outputDir, getDownloadUrl, getPreviewUrl, getDownloadAllUrl, onReset }: Props) {
@@ -751,8 +721,6 @@ export function FileList({ files, outputDir, getDownloadUrl, getPreviewUrl, getD
         &lt;/div&gt;
       &lt;/div&gt;
 &nbsp;
-      {/* role=group + aria-pressed makes this read as a filter toggle set
-          rather than six unrelated buttons. */}
       &lt;div className={styles.filters} role="group" aria-label={t("whatToExtract")}&gt;
         {FILTERS.map((f) =&gt; (
           &lt;button
@@ -798,11 +766,6 @@ export function FileList({ files, outputDir, getDownloadUrl, getPreviewUrl, getD
             const canPreview = PREVIEWABLE.has(category);
             const isSelected = selected.has(file.filename);
             return (
-              // Keyed by filename, not array index: filenames are unique
-              // within a job (unique_filename guarantees it) and stable across
-              // filter changes, whereas an index key made React reuse the DOM
-              // node of a *different* file when the filter changed, carrying
-              // the previous row's checkbox state and &lt;img&gt; over with it.
               &lt;li key={file.filename} className={styles.item}&gt;
                 &lt;button
                   type="button"
@@ -822,8 +785,6 @@ export function FileList({ files, outputDir, getDownloadUrl, getPreviewUrl, getD
                   {FILE_ICONS[category] ?? <span class="branch-1 cbranch-no" title="branch not covered" >FILE_ICONS.other}</span>
                 &lt;/span&gt;
 &nbsp;
-                {/* A real &lt;button&gt; when it is interactive: the old clickable
-                    &lt;div&gt; was unreachable by keyboard and announced nothing. */}
                 {canPreview ? (
                   &lt;button
                     type="button"
@@ -907,7 +868,7 @@ export function FileList({ files, outputDir, getDownloadUrl, getPreviewUrl, getD
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-07-27T14:50:55.680Z
+                at 2026-08-04T11:41:36.178Z
             </div>
         <script src="../../prettify.js"></script>
         <script>
