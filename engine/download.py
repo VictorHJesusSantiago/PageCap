@@ -71,15 +71,12 @@ async def download_with_retry(
             async with client.stream("GET", url, headers=headers) as resp:
                 resumed = resume_from > 0 and resp.status_code == 206
                 if resp.status_code == 416:
-                    # Server says our resumed range is already complete.
                     break
                 if resp.status_code not in (200, 206):
                     raise httpx.HTTPStatusError(
                         f"HTTP {resp.status_code}", request=resp.request, response=resp
                     )
                 if resume_from > 0 and not resumed:
-                    # Server ignored our Range header (200 = full body) —
-                    # restart clean instead of appending a duplicate prefix.
                     total = 0
                     hasher = hashlib.sha256()
                     mode = "wb"
@@ -107,7 +104,7 @@ async def download_with_retry(
 
         except MaxSizeExceeded:
             dest.unlink(missing_ok=True)
-            return None  # exceeding the cap is not retried — it'll always exceed it
+            return None
         except Exception as e:
             last_error = e
             if attempt < max_retries:
@@ -116,7 +113,6 @@ async def download_with_retry(
             dest.unlink(missing_ok=True)
             return None
 
-    # Fell through via the 416 "already complete" branch.
     if dest.exists():
         with open(dest, "rb") as f:
             hasher = hashlib.sha256()
