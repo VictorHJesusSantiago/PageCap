@@ -22,9 +22,6 @@ import time
 from contextlib import contextmanager
 from typing import Optional
 
-# Ambient correlation identifiers. asyncio copies the context per task, so a
-# job's tasks inherit the binding made when the job started without leaking it
-# into sibling jobs running on the same loop.
 _request_id: contextvars.ContextVar[Optional[str]] = contextvars.ContextVar("request_id", default=None)
 _job_id: contextvars.ContextVar[Optional[str]] = contextvars.ContextVar("job_id", default=None)
 
@@ -32,9 +29,6 @@ _job_id: contextvars.ContextVar[Optional[str]] = contextvars.ContextVar("job_id"
 class _JsonFormatter(logging.Formatter):
     def format(self, record: logging.LogRecord) -> str:
         payload = {
-            # ISO-8601 in UTC with an explicit offset. localtime() without a
-            # timezone made timestamps unorderable across machines and
-            # ambiguous across DST transitions.
             "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S", time.gmtime(record.created))
             + f".{int(record.msecs):03d}Z",
             "level": record.levelname,
