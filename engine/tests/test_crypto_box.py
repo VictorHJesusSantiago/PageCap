@@ -54,7 +54,7 @@ def test_wrong_key_fails_closed(tmp_path: Path):
 def test_tampered_ciphertext_fails_closed(box: SecretBox):
     ciphertext = box.encrypt("topsecret") or ""
     body = bytearray(base64.urlsafe_b64decode(ciphertext[len("enc:v1:"):]))
-    body[-1] ^= 0xFF  # flip a bit in the GCM tag
+    body[-1] ^= 0xFF
     tampered = "enc:v1:" + base64.urlsafe_b64encode(bytes(body)).decode()
     assert box.decrypt(tampered) is None
 
@@ -63,9 +63,8 @@ def test_env_key_is_used_when_set(tmp_path: Path, monkeypatch):
     key = base64.urlsafe_b64encode(b"k" * 32).decode()
     monkeypatch.setenv("PAGECAP_SECRET_KEY", key)
     a, b = SecretBox(tmp_path / "x.key"), SecretBox(tmp_path / "y.key")
-    # Different key files, same env key → interchangeable.
     assert b.decrypt(a.encrypt("shared")) == "shared"
-    assert not (tmp_path / "x.key").exists()  # no key file written
+    assert not (tmp_path / "x.key").exists()
 
 
 def test_env_key_wrong_length_rejected(tmp_path: Path, monkeypatch):

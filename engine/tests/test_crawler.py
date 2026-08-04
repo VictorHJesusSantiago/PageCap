@@ -36,8 +36,6 @@ def a_file(tmp_path: Path, name="a.jpg", **kwargs) -> ExtractedFile:
     return ExtractedFile(**defaults)
 
 
-# ── CrawlContext.add: the single policy funnel ──────────────────────────────
-
 def test_add_accepts_a_file(tmp_path: Path):
     c = ctx(tmp_path)
     c.add(a_file(tmp_path))
@@ -106,8 +104,8 @@ def test_dedupe_can_be_disabled(tmp_path: Path):
 
 def test_add_enforces_the_job_size_cap(tmp_path: Path):
     c = ctx(tmp_path, max_job_size_bytes=40)
-    c.add(a_file(tmp_path, name="a.jpg"))          # 32 bytes — fits
-    over = a_file(tmp_path, name="b.jpg")          # would total 64
+    c.add(a_file(tmp_path, name="a.jpg"))
+    over = a_file(tmp_path, name="b.jpg")
     c.add(over)
 
     assert [f.filename for f in c.files] == ["a.jpg"]
@@ -122,8 +120,6 @@ def test_metadata_only_files_do_not_count_against_the_size_cap(tmp_path: Path):
     assert c.job_bytes_total == 0
     assert len(c.files) == 1
 
-
-# ── Derived request state ───────────────────────────────────────────────────
 
 @pytest.mark.parametrize("types,want_media", [
     (["all"], True), (["videos"], True), (["audio"], True),
@@ -142,8 +138,6 @@ def test_want_all(tmp_path: Path):
     c.want = {"images"}
     assert c.want_all is False
 
-
-# ── Stage isolation ─────────────────────────────────────────────────────────
 
 async def test_a_failing_stage_does_not_abort_the_pipeline(tmp_path: Path):
     c = ctx(tmp_path)
@@ -201,8 +195,6 @@ async def test_cancelled_error_propagates_and_is_not_swallowed(tmp_path: Path):
         await _run_stage(_Stage("s", stage), c)
 
 
-# ── Pause / resume ──────────────────────────────────────────────────────────
-
 async def test_wait_if_paused_returns_immediately_when_running(tmp_path: Path):
     c = ctx(tmp_path)
     await asyncio.wait_for(c.wait_if_paused(), timeout=0.5)
@@ -240,10 +232,8 @@ async def test_wait_if_paused_releases_on_cancel(tmp_path: Path):
 
 
 def test_signal_resume_is_safe_for_an_unknown_job():
-    signal_resume("no-such-job")  # must not raise
+    signal_resume("no-such-job")
 
-
-# ── Progress throttling ─────────────────────────────────────────────────────
 
 def test_file_progress_is_throttled(tmp_path: Path):
     emitted: list[int] = []
@@ -253,7 +243,7 @@ def test_file_progress_is_throttled(tmp_path: Path):
     c.emit_file_progress("a.bin", 1, 100)
     c.emit_file_progress("a.bin", 2, 100)
     c.emit_file_progress("a.bin", 3, 100)
-    assert emitted == [1]  # the rest fall inside the 250ms window
+    assert emitted == [1]
 
 
 def test_file_progress_always_emits_completion(tmp_path: Path):
@@ -262,11 +252,9 @@ def test_file_progress_always_emits_completion(tmp_path: Path):
     c.on_progress = lambda job: emitted.append(job.current_file.bytes_done)
 
     c.emit_file_progress("a.bin", 1, 100)
-    c.emit_file_progress("a.bin", 100, 100)  # done == total bypasses the throttle
+    c.emit_file_progress("a.bin", 100, 100)
     assert emitted == [1, 100]
 
-
-# ── Zip ─────────────────────────────────────────────────────────────────────
 
 def test_zip_prefers_the_converted_file(tmp_path: Path):
     src = tmp_path / "a.png"
@@ -321,8 +309,6 @@ def test_zip_never_contains_itself(tmp_path: Path):
     with zipfile.ZipFile(result) as zf:
         assert zf.namelist() == []
 
-
-# ── Diff ────────────────────────────────────────────────────────────────────
 
 def test_diff_reports_added_removed_changed_and_unchanged():
     previous = JobState(job_id="prev", url="https://example.com", status=JobStatus.done)

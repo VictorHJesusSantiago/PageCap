@@ -22,7 +22,7 @@ def test_defaults(monkeypatch):
     s = _fresh_config(monkeypatch)
     assert s.db_path == Path("pagecap.db")
     assert s.downloads_dir == Path("downloads")
-    assert s.require_auth is True  # auth is on unless explicitly disabled
+    assert s.require_auth is True
     assert s.allow_null_origin is False
     assert s.rate_limit_per_minute == 0
     assert s.job_ttl_seconds == 3 * 24 * 3600

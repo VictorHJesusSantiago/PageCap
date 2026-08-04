@@ -17,9 +17,6 @@ from models import AuthConfig, AuthMethod, ExtractedFile, ExtractionRequest, Job
 
 TEST_TOKEN = "test-token-abcdefghijklmnop"
 
-# Every module that captures `config.settings` (or a value derived from it) at
-# import time. Popping only "api" leaves the old frozen Settings object alive
-# behind these, and the re-imported api then disagrees with them.
 _RELOADABLE = ("api", "config", "auth.tokens", "auth.profiles", "plugins", "logging_config")
 
 _ENV_KEYS = (
@@ -62,8 +59,6 @@ def authed(module):
         client.headers.update({"Authorization": f"Bearer {TEST_TOKEN}"})
         yield client
 
-
-# ── Auth is on by default ───────────────────────────────────────────────────
 
 def test_auth_enabled_by_default_with_generated_token(tmp_path: Path, monkeypatch):
     """No PAGECAP_API_TOKEN supplied must not mean "no auth": a token is
@@ -114,7 +109,6 @@ def test_token_enforced_and_health_exempt(api):
         assert client.get(
             "/v1/jobs", headers={"Authorization": f"Bearer {TEST_TOKEN}"}
         ).status_code == 200
-        # Query-param fallback, for <img src>/<a download>/WebSocket.
         assert client.get(f"/v1/jobs?token={TEST_TOKEN}").status_code == 200
         assert client.get("/v1/jobs?token=wrong").status_code == 401
 
@@ -124,8 +118,6 @@ def test_401_advertises_bearer_scheme(api):
         res = client.get("/v1/jobs")
         assert res.headers["www-authenticate"] == "Bearer"
 
-
-# ── Versioning ──────────────────────────────────────────────────────────────
 
 def test_v1_and_legacy_paths_both_work(api):
     with authed(api) as client:
@@ -150,8 +142,6 @@ def test_openapi_documents_only_the_versioned_surface(api):
         assert "/v1/jobs" in paths
         assert "/jobs" not in paths
 
-
-# ── RFC 7807 problem details ────────────────────────────────────────────────
 
 def test_404_is_problem_json(api):
     with authed(api) as client:
@@ -198,8 +188,6 @@ def test_conflict_on_pausing_a_non_running_job(api):
         assert res.json()["type"].endswith("/conflict")
 
 
-# ── Secrets must never leave via a response body ────────────────────────────
-
 def _request_with_secrets() -> ExtractionRequest:
     return ExtractionRequest(
         url="https://example.com",
@@ -222,7 +210,7 @@ def test_template_list_and_get_never_return_secrets(api):
             assert "TOP-SECRET-PW" not in body
             assert "JBSWY3DPEHPK3PXP" not in body
             assert "session=abc123" not in body
-            assert "alice" in body  # non-secret auth config still round-trips
+            assert "alice" in body
 
 
 def test_schedule_list_never_returns_secrets(api):
@@ -258,8 +246,6 @@ def test_health_does_not_leak_absolute_db_path(api):
         assert body["db_name"] == "pagecap.db"
         assert body["auth_required"] is True
 
-
-# ── File serving ────────────────────────────────────────────────────────────
 
 def _extracted(filename: str, content_type: str, path: Path) -> ExtractedFile:
     return ExtractedFile(filename=filename, url="https://example.com/x",
@@ -336,8 +322,6 @@ def test_security_headers_present_on_every_response(api):
         assert "default-src 'none'" in res.headers["content-security-policy"]
 
 
-# ── Pagination ──────────────────────────────────────────────────────────────
-
 def test_jobs_are_keyset_paginated(api):
     for i in range(5):
         api._jobs[f"j{i}"] = JobState(
@@ -349,7 +333,6 @@ def test_jobs_are_keyset_paginated(api):
         assert len(first["jobs"]) == 2
         assert first["total"] == 5
         assert first["next_cursor"] is not None
-        # Newest first.
         assert first["jobs"][0]["job_id"] == "j4"
 
         second = client.get(f"/v1/jobs?limit=2&cursor={first['next_cursor']}").json()
@@ -370,8 +353,6 @@ def test_jobs_rejects_non_numeric_cursor(api):
     with authed(api) as client:
         assert client.get("/v1/jobs?cursor=abc").status_code == 422
 
-
-# ── Long-running operation semantics ────────────────────────────────────────
 
 def test_extract_returns_202_with_location(api, monkeypatch):
     async def _noop(request, job, on_progress=None, find_previous_job=None):
@@ -394,8 +375,6 @@ def test_download_all_conflicts_while_running(api):
         assert client.get("/v1/jobs/run/download-all").status_code == 409
 
 
-# ── Observability ───────────────────────────────────────────────────────────
-
 def test_metrics_exposes_red_counters_and_percentiles(api):
     with authed(api) as client:
         client.get("/v1/health")
@@ -414,8 +393,6 @@ def test_readiness_fails_while_shutting_down(api):
         finally:
             api._shutting_down = False
 
-
-# ── Startup recovery ────────────────────────────────────────────────────────
 
 def test_jobs_left_running_after_a_crash_are_marked_errored(tmp_path: Path, monkeypatch):
     """A "running" row means the process that was driving it died. Leaving the
@@ -436,8 +413,6 @@ def test_jobs_left_running_after_a_crash_are_marked_errored(tmp_path: Path, monk
     finally:
         _evict()
 
-
-# ── CORS / origin policy ────────────────────────────────────────────────────
 
 def test_null_origin_rejected_by_default(api):
     with authed(api) as client:
@@ -470,8 +445,6 @@ def test_foreign_origin_gets_no_cors_grant(api):
         assert "access-control-allow-origin" not in res.headers
 
 
-# ── Rate limiting ───────────────────────────────────────────────────────────
-
 def test_rate_limit_returns_429_with_retry_after(tmp_path: Path, monkeypatch):
     module = _fresh_api(
         tmp_path, monkeypatch,
@@ -489,8 +462,6 @@ def test_rate_limit_returns_429_with_retry_after(tmp_path: Path, monkeypatch):
     finally:
         _evict()
 
-
-# ── WebSocket ───────────────────────────────────────────────────────────────
 
 def test_websocket_requires_token_when_configured(api):
     from starlette.websockets import WebSocketDisconnect
