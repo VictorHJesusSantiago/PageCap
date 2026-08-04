@@ -130,38 +130,9 @@
 <a name='L65'></a><a href='#L65'>65</a>
 <a name='L66'></a><a href='#L66'>66</a>
 <a name='L67'></a><a href='#L67'>67</a>
-<a name='L68'></a><a href='#L68'>68</a>
-<a name='L69'></a><a href='#L69'>69</a>
-<a name='L70'></a><a href='#L70'>70</a>
-<a name='L71'></a><a href='#L71'>71</a>
-<a name='L72'></a><a href='#L72'>72</a>
-<a name='L73'></a><a href='#L73'>73</a>
-<a name='L74'></a><a href='#L74'>74</a>
-<a name='L75'></a><a href='#L75'>75</a>
-<a name='L76'></a><a href='#L76'>76</a>
-<a name='L77'></a><a href='#L77'>77</a>
-<a name='L78'></a><a href='#L78'>78</a>
-<a name='L79'></a><a href='#L79'>79</a>
-<a name='L80'></a><a href='#L80'>80</a>
-<a name='L81'></a><a href='#L81'>81</a>
-<a name='L82'></a><a href='#L82'>82</a>
-<a name='L83'></a><a href='#L83'>83</a>
-<a name='L84'></a><a href='#L84'>84</a>
-<a name='L85'></a><a href='#L85'>85</a>
-<a name='L86'></a><a href='#L86'>86</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<a name='L68'></a><a href='#L68'>68</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">2x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -182,16 +153,9 @@
 <span class="cline-any cline-yes">13x</span>
 <span class="cline-any cline-yes">13x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">13x</span>
 <span class="cline-any cline-yes">45x</span>
 <span class="cline-any cline-yes">45x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">13x</span>
@@ -246,17 +210,6 @@ const FOCUSABLE = [
   '[tabindex]:not([tabindex="-1"])',
 ].join(",");
 &nbsp;
-/**
- * WCAG 2.1 keyboard requirements for a modal dialog, in one place:
- *
- *  - Escape closes it (2.1.2 No Keyboard Trap needs an escape route).
- *  - Tab cycles *within* the dialog instead of walking into the page behind it,
- *    which a screen-reader or keyboard user cannot see is inert.
- *  - Focus moves into the dialog on open and returns to whatever opened it on
- *    close (3.2.1 On Focus), so the reading position is not lost.
- *
- * Returns the ref to attach to the dialog container.
- */
 export function useModalA11y(isOpen: boolean, onClose: () =&gt; void) {
   const containerRef = useRef&lt;HTMLDivElement | null&gt;(null);
   const previouslyFocused = useRef&lt;HTMLElement | null&gt;(null);
@@ -267,18 +220,11 @@ export function useModalA11y(isOpen: boolean, onClose: () =&gt; void) {
     previouslyFocused.current = document.activeElement as HTMLElement | null;
     const container = containerRef.current;
 &nbsp;
-    // Visibility filter. Deliberately NOT `offsetParent !== null`: that returns
-    // null for every `position: fixed` element, which is exactly what a modal
-    // overlay is, so it would have filtered out the dialog's own contents.
-    // checkVisibility() is the correct API; where it is unavailable (older
-    // engines, jsdom) fall back to the attribute checks alone.
     const isVisible = (el: HTMLElement) =&gt; {
       <span class="missing-if-branch" title="if path not taken" >I</span>if (el.hasAttribute("hidden") || el.getAttribute("aria-hidden") === "true") <span class="cstat-no" title="statement not covered" >return false;</span>
       return typeof el.checkVisibility === "function" ? <span class="branch-0 cbranch-no" title="branch not covered" >el.checkVisibility() : t</span>rue;
     };
 &nbsp;
-    // Focus the first interactive element, falling back to the container so
-    // the dialog itself is announced when it holds nothing focusable.
     const focusables = () =&gt;
       Array.from(container?.querySelectorAll&lt;HTMLElement&gt;(FOCUSABLE) ?? <span class="branch-1 cbranch-no" title="branch not covered" >[])</span>.filter(isVisible);
     (focusables()[0] ?? container)?.focus();
@@ -325,7 +271,7 @@ export function useModalA11y(isOpen: boolean, onClose: () =&gt; void) {
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-07-27T14:50:55.680Z
+                at 2026-08-04T11:41:36.178Z
             </div>
         <script src="../../prettify.js"></script>
         <script>
