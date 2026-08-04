@@ -17,8 +17,6 @@ export default function App() {
   const [theme, toggleTheme] = useTheme();
   const { t } = useI18n();
 
-  // Fire exactly one notification per job completion/failure, even though
-  // the WebSocket may deliver several "done"/"error" JobState updates.
   const notifiedJobId = useRef<string | null>(null);
   useEffect(() => {
     if (!job) return;
@@ -44,7 +42,7 @@ export default function App() {
 
   return (
     <div className={styles.app}>
-      {/* Header */}
+      {}
       <header className={styles.header}>
         <div className={styles.headerBar}>
           <div className={styles.logo}>
@@ -60,7 +58,7 @@ export default function App() {
         <p className={styles.tagline}>{t("tagline")}</p>
       </header>
 
-      {/* Main */}
+      {}
       <main className={styles.main}>
         <div className={styles.card}>
           {phase === "idle" && (
