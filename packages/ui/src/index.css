@@ -4,18 +4,14 @@
   padding: 0;
 }
 
-/* ── Accessibility baseline (WCAG 2.1 AA) ─────────────────────────────────
-   Focus visibility (2.4.7): :focus-visible only, so the ring appears for
-   keyboard navigation without outlining every mouse click. Never replace this
-   with `outline: none` — it makes the app unusable without a mouse. */
+
 :focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
   border-radius: 3px;
 }
 
-/* Respect the OS "reduce motion" setting (2.3.3). Spinners and transitions
-   are decorative here, so they are safe to drop entirely. */
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;
@@ -25,8 +21,7 @@
   }
 }
 
-/* Screen-reader-only text: available to assistive tech, invisible on screen.
-   Used for labels that would be redundant next to a visible icon. */
+
 .srOnly {
   position: absolute;
   width: 1px;
@@ -38,9 +33,7 @@
   border: 0;
 }
 
-/* Interactive targets: 44x44 CSS px is the WCAG 2.5.5 recommendation. Icon
-   buttons get it via padding rather than a fixed size so they keep their
-   compact visual footprint. */
+
 button, [role="button"], a[href], input, select, textarea {
   min-height: 24px;
 }
