@@ -14,9 +14,6 @@ engine/.jobs/
 engine/pagecap.db
 engine/pagecap.db-wal
 engine/pagecap.db-shm
-# Local secrets generated at runtime — never commit.
-# .pagecap_key   : AES key for credentials at rest (crypto_box.py)
-# .pagecap_token : generated API bearer token (auth/tokens.py)
 .pagecap_key
 .pagecap_token
 engine/.pagecap_key

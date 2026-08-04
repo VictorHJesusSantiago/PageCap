@@ -5,13 +5,11 @@ echo "================================================"
 echo " PageCap - Setup (Linux/macOS)"
 echo "================================================"
 
-# Check Python
 if ! command -v python3 &>/dev/null; then
   echo "[ERRO] Python3 não encontrado. Instale Python 3.10+."
   exit 1
 fi
 
-# Check Node.js
 if ! command -v node &>/dev/null; then
   echo "[ERRO] Node.js não encontrado. Instale Node.js 18+."
   exit 1

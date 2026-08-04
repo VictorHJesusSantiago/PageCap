@@ -38,8 +38,6 @@ jobs:
         with:
           python-version: "3.11"
 
-      # Shift-left: a known-vulnerable transitive dependency should fail the
-      # build, not be discovered from a downstream report.
       - name: Audit Python dependencies
         run: |
           pip install pip-audit
@@ -59,11 +57,6 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # Runtime dependencies are the gate: anything shipped to a user must be
-      # clean. The full tree is reported but not enforced — electron-builder's
-      # packaging chain (ejs/jake/minimatch/glob/temp) carries high advisories
-      # with no fixed release, and it only ever runs on a maintainer's machine
-      # during `npm run dist`. Re-check when electron-builder > 26.15.3 ships.
       - name: Audit runtime dependencies (blocking)
         run: npm audit --omit=dev --audit-level=high
 

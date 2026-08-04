@@ -3,7 +3,6 @@ echo ================================================
 echo  PageCap - Setup (Windows)
 echo ================================================
 
-:: Check Python
 python --version >nul 2>&1
 if errorlevel 1 (
     echo [ERRO] Python nao encontrado. Instale Python 3.10+ de https://python.org
@@ -11,7 +10,6 @@ if errorlevel 1 (
     exit /b 1
 )
 
-:: Check Node.js
 node --version >nul 2>&1
 if errorlevel 1 (
     echo [ERRO] Node.js nao encontrado. Instale Node.js 18+ de https://nodejs.org
