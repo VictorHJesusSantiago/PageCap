@@ -195,28 +195,11 @@
 <a name='L130'></a><a href='#L130'>130</a>
 <a name='L131'></a><a href='#L131'>131</a>
 <a name='L132'></a><a href='#L132'>132</a>
-<a name='L133'></a><a href='#L133'>133</a>
-<a name='L134'></a><a href='#L134'>134</a>
-<a name='L135'></a><a href='#L135'>135</a>
-<a name='L136'></a><a href='#L136'>136</a>
-<a name='L137'></a><a href='#L137'>137</a>
-<a name='L138'></a><a href='#L138'>138</a>
-<a name='L139'></a><a href='#L139'>139</a>
-<a name='L140'></a><a href='#L140'>140</a>
-<a name='L141'></a><a href='#L141'>141</a>
-<a name='L142'></a><a href='#L142'>142</a>
-<a name='L143'></a><a href='#L143'>143</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<a name='L133'></a><a href='#L133'>133</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">6x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">6x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -324,9 +307,6 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">47x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">47x</span>
 <span class="cline-any cline-yes">47x</span>
@@ -353,13 +333,6 @@ export type Locale = "pt-BR" | "en-US";
 &nbsp;
 const STORAGE_KEY = "pagecap-locale";
 &nbsp;
-// Covers the primary navigation/status surface (header, form section labels,
-// progress states, file list chrome). Deep per-field microcopy inside every
-// advanced-option tooltip is not exhaustively translated — this is a
-// functional language switch for the core flow, not a full localization pass.
-// Exported so a test can assert both locales carry the same key set — a key
-// present in one and missing in the other renders as a raw identifier for half
-// the users, and nothing else catches that.
 export const DICTIONARIES: Record&lt;Locale, Record&lt;string, string&gt;&gt; = {
   "pt-BR": {
     tagline: "Extrai qualquer conteúdo de qualquer página web",
@@ -384,7 +357,7 @@ export const DICTIONARIES: Record&lt;Locale, Record&lt;string, string&gt;&gt; = 
     downloadSelected: "Baixar selecionados",
     jobDoneTitle: "Extração concluída",
     jobErrorTitle: "Extração falhou",
-    // FileList
+&nbsp;
     filesExtracted: "arquivo(s) extraído(s)",
     totalSize: "total",
     filterAll: "Todos",
@@ -396,7 +369,7 @@ export const DICTIONARIES: Record&lt;Locale, Record&lt;string, string&gt;&gt; = 
     emptyForFilter: "Nenhum arquivo deste tipo.",
     convertedTo: "convertido para",
     outputFolder: "Pasta de saída",
-    // Accessible names for icon-only controls
+&nbsp;
     a11ySelectFile: "Selecionar arquivo",
     a11yDownloadFile: "Baixar arquivo",
     a11yPreviewFile: "Pré-visualizar arquivo",
@@ -428,7 +401,7 @@ export const DICTIONARIES: Record&lt;Locale, Record&lt;string, string&gt;&gt; = 
     downloadSelected: "Download selected",
     jobDoneTitle: "Extraction complete",
     jobErrorTitle: "Extraction failed",
-    // FileList
+&nbsp;
     filesExtracted: "file(s) extracted",
     totalSize: "total",
     filterAll: "All",
@@ -440,7 +413,7 @@ export const DICTIONARIES: Record&lt;Locale, Record&lt;string, string&gt;&gt; = 
     emptyForFilter: "No files of this type.",
     convertedTo: "converted to",
     outputFolder: "Output folder",
-    // Accessible names for icon-only controls
+&nbsp;
     a11ySelectFile: "Select file",
     a11yDownloadFile: "Download file",
     a11yPreviewFile: "Preview file",
@@ -467,9 +440,6 @@ const I18nContext = createContext&lt;I18nContextValue | null&gt;(null);
 export function I18nProvider({ children }: { children: ReactNode }) {
   const [locale, setLocaleState] = useState&lt;Locale&gt;(getInitialLocale);
 &nbsp;
-  // WCAG 3.1.1: &lt;html lang&gt; must reflect the language actually rendered, or a
-  // screen reader reads Portuguese copy with an English voice (and vice versa).
-  // The static attribute in index.html is only the initial value.
   useEffect(() =&gt; {
     document.documentElement.lang = locale;
   }, [locale]);
@@ -496,7 +466,7 @@ export function useI18n(): I18nContextValue {
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-07-27T14:50:55.680Z
+                at 2026-08-04T11:41:36.178Z
             </div>
         <script src="../prettify.js"></script>
         <script>
