@@ -23,10 +23,8 @@ async def convert_data(src: Path, target_ext: str) -> Path:
     src_ext = src.suffix.lower()
     dest = src.with_suffix(target_ext)
 
-    # ── Read ──────────────────────────────────────────────────────────────────
     df = await _read(pd, src, src_ext)
 
-    # ── Write ─────────────────────────────────────────────────────────────────
     await _write(pd, df, dest, target_ext)
     return dest
 
@@ -61,8 +59,6 @@ async def _read(pd, src: Path, ext: str):
         except ImportError:
             raise RuntimeError("fastavro não instalado: pip install fastavro")
     elif ext == ".msgpack":
-        # pandas removed read_msgpack in 1.0 — calling it raises an opaque
-        # AttributeError. Fail with something a user can act on.
         raise ValueError(
             "Leitura de .msgpack não é suportada (pandas removeu read_msgpack na v1.0)"
         )
@@ -78,9 +74,6 @@ async def _write(pd, df, dest: Path, ext: str):
     elif ext == ".xlsx":
         df.to_excel(dest, index=False, engine="openpyxl")
     elif ext == ".xls":
-        # pandas dropped the xlwt writer in 2.0; there is no maintained
-        # pure-Python .xls writer left. Say so instead of surfacing an
-        # ImportError about a package that can no longer be installed.
         raise ValueError("Escrita de .xls legado não é suportada — converta para .xlsx")
     elif ext == ".ods":
         df.to_excel(dest, index=False, engine="odf")
@@ -108,7 +101,6 @@ def _read_sqlite(pd, src: Path):
     tables = pd.read_sql("SELECT name FROM sqlite_master WHERE type='table'", con)
     if tables.empty:
         raise ValueError("SQLite sem tabelas")
-    # Read first table
     table_name = tables.iloc[0]["name"]
     df = pd.read_sql(f"SELECT * FROM [{table_name}]", con)
     con.close()

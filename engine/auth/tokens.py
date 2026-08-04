@@ -36,8 +36,6 @@ def _write(path: Path, token: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(token, encoding="utf-8")
     try:
-        # Owner read/write only. A no-op on Windows, where the inherited
-        # directory ACL governs access instead.
         path.chmod(stat.S_IRUSR | stat.S_IWUSR)
     except OSError:
         pass

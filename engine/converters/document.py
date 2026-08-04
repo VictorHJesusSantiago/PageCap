@@ -10,7 +10,6 @@ import shutil
 import subprocess
 from pathlib import Path
 
-# pandoc format names differ from extensions
 _PANDOC_FMT: dict[str, str] = {
     ".txt":   "plain",
     ".md":    "markdown",
@@ -62,7 +61,6 @@ async def convert_document(src: Path, target_ext: str) -> Path:
         "--standalone",
     ]
 
-    # PDF output requires a PDF engine
     if target_ext == ".pdf":
         if shutil.which("pdflatex"):
             cmd += ["--pdf-engine", "pdflatex"]
@@ -79,7 +77,6 @@ async def convert_document(src: Path, target_ext: str) -> Path:
     _, stderr = await proc.communicate()
 
     if proc.returncode != 0:
-        # Fallback: pdf→txt via pdfminer
         if src_ext == ".pdf" and target_ext == ".txt":
             return await _pdf_to_txt(src, dest)
         raise RuntimeError(f"pandoc falhou: {stderr.decode()[:500]}")
