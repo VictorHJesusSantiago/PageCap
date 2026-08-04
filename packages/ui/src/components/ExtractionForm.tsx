@@ -50,7 +50,7 @@ export function ExtractionForm({ onSubmit, disabled }: Props) {
       const parsed = new URL(candidate);
       if (parsed.protocol === "http:" || parsed.protocol === "https:") return candidate;
     } catch {
-      /* not a valid absolute URL — ignore the drop */
+
     }
     return null;
   };
@@ -114,7 +114,7 @@ export function ExtractionForm({ onSubmit, disabled }: Props) {
 
   return (
     <form className={styles.form} onSubmit={handleSubmit}>
-      {/* URL */}
+      {}
       <div
         className={`${styles.urlRow} ${isDragOver ? styles.urlRowDragOver : ""}`}
         onDragOver={handleDragOver}
@@ -136,7 +136,6 @@ export function ExtractionForm({ onSubmit, disabled }: Props) {
         </button>
       </div>
 
-      {/* Content types */}
       <div className={styles.section}>
         <label className={styles.sectionLabel}>O que extrair</label>
         <div className={styles.typeGrid}>
@@ -155,7 +154,6 @@ export function ExtractionForm({ onSubmit, disabled }: Props) {
         </div>
       </div>
 
-      {/* Auth */}
       <div className={styles.section}>
         <label className={styles.sectionLabel}>
           <Lock size={13} /> Autenticação
@@ -236,7 +234,6 @@ export function ExtractionForm({ onSubmit, disabled }: Props) {
         )}
       </div>
 
-      {/* Advanced */}
       <button
         type="button"
         className={styles.advancedToggle}

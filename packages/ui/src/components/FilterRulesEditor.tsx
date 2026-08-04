@@ -14,10 +14,6 @@ interface Props {
 
 const BYTES_PER_KB = 1024;
 
-/** Visual rule builder for what to include/exclude from an extraction:
- * extension chips (added one at a time), a regex the asset URL must match,
- * and a minimum file size — all map directly to backend ExtractionRequest
- * fields (target_extensions, url_pattern, min_file_size_bytes). */
 export function FilterRulesEditor({
   extensions, onExtensionsChange,
   urlPattern, onUrlPatternChange,
@@ -25,9 +21,7 @@ export function FilterRulesEditor({
   disabled,
 }: Props) {
   const [draft, setDraft] = useState("");
-  // useId keeps label/input association correct even with several instances of
-  // this component on one page. A bare <label> with no `for` is announced as
-  // unrelated text, so the field itself has no accessible name (WCAG 1.3.1).
+
   const baseId = useId();
   const extId = `${baseId}-ext`;
   const patternId = `${baseId}-pattern`;

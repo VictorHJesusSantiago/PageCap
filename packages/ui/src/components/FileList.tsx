@@ -35,12 +35,8 @@ const FILTERS: { value: Filter; labelKey: string }[] = [
   { value: "document", labelKey: "filterDocument" },
 ];
 
-// Media that can render inline in a preview modal without a plugin. Mirrors
-// the server's inline allowlist in api.py — anything else is served as an
-// attachment, so offering a preview for it would just download the file.
 const PREVIEWABLE = new Set(["image", "video", "audio"]);
 
-// Browsers block rapid programmatic downloads fired in the same tick.
 const DOWNLOAD_STAGGER_MS = 250;
 
 export function FileList({ files, outputDir, getDownloadUrl, getPreviewUrl, getDownloadAllUrl, onReset }: Props) {
@@ -128,8 +124,6 @@ export function FileList({ files, outputDir, getDownloadUrl, getPreviewUrl, getD
         </div>
       </div>
 
-      {/* role=group + aria-pressed makes this read as a filter toggle set
-          rather than six unrelated buttons. */}
       <div className={styles.filters} role="group" aria-label={t("whatToExtract")}>
         {FILTERS.map((f) => (
           <button
@@ -175,11 +169,6 @@ export function FileList({ files, outputDir, getDownloadUrl, getPreviewUrl, getD
             const canPreview = PREVIEWABLE.has(category);
             const isSelected = selected.has(file.filename);
             return (
-              // Keyed by filename, not array index: filenames are unique
-              // within a job (unique_filename guarantees it) and stable across
-              // filter changes, whereas an index key made React reuse the DOM
-              // node of a *different* file when the filter changed, carrying
-              // the previous row's checkbox state and <img> over with it.
               <li key={file.filename} className={styles.item}>
                 <button
                   type="button"
@@ -199,8 +188,6 @@ export function FileList({ files, outputDir, getDownloadUrl, getPreviewUrl, getD
                   {FILE_ICONS[category] ?? FILE_ICONS.other}
                 </span>
 
-                {/* A real <button> when it is interactive: the old clickable
-                    <div> was unreachable by keyboard and announced nothing. */}
                 {canPreview ? (
                   <button
                     type="button"
