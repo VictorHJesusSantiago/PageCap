@@ -21,7 +21,7 @@ export interface UseExtractionResult {
 function phaseForStatus(status: JobState["status"]): ExtractionPhase {
   if (status === "done" || status === "cancelled") return "done";
   if (status === "error") return "error";
-  return "running"; // queued | running | waiting_captcha
+  return "running";
 }
 
 export function useExtraction(): UseExtractionResult {
@@ -103,9 +103,6 @@ export function useExtraction(): UseExtractionResult {
     return currentJobId.current ? client.previewUrl(currentJobId.current, filename) : "#";
   }, []);
 
-  // Loads a job from history into the current view. If it's still in
-  // flight, reconnect the WebSocket so it keeps updating live; otherwise
-  // just render its final state.
   const loadJob = useCallback(async (jobId: string) => {
     const state = await client.getJob(jobId);
     currentJobId.current = jobId;

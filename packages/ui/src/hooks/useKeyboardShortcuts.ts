@@ -1,9 +1,9 @@
 import { useEffect } from "react";
 
 export interface ShortcutHandlers {
-  onNewJob?: () => void;      // Ctrl/Cmd+N
-  onCancel?: () => void;      // Escape
-  onOpenFolder?: () => void;  // Ctrl/Cmd+O
+  onNewJob?: () => void;
+  onCancel?: () => void;
+  onOpenFolder?: () => void;
 }
 
 function isTypingTarget(el: EventTarget | null): boolean {
@@ -22,8 +22,6 @@ export function useKeyboardShortcuts(handlers: ShortcutHandlers) {
         return;
       }
 
-      // Ctrl/Cmd+N and Ctrl/Cmd+O only fire outside text inputs, so typing a
-      // URL or search text never accidentally triggers them.
       if (isTypingTarget(e.target)) return;
 
       if (mod && e.key.toLowerCase() === "n" && handlers.onNewJob) {
