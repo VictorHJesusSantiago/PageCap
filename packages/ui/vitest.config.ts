@@ -13,7 +13,7 @@ export default defineConfig({
     environment: "jsdom",
     globals: true,
     setupFiles: ["./src/test/setup.ts"],
-    css: true, // CSS Modules must resolve so className lookups in tests work
+    css: true,
     coverage: {
       provider: "v8",
       reporter: ["text", "lcov"],
@@ -24,9 +24,7 @@ export default defineConfig({
         "src/test/**",
         "**/*.test.{ts,tsx}",
       ],
-      // A floor, not a target: set just under what the suite currently
-      // achieves, so a regression fails the build but normal churn does not.
-      // Raise it when coverage rises; never lower it to make a build pass.
+
       thresholds: {
         lines: 85,
         functions: 78,

@@ -1,6 +1,3 @@
-/** Fires a desktop notification: native Electron Notification when running
- * inside the packaged app, falling back to the browser Notification API
- * (with a one-time permission prompt) when running as a plain web page. */
 export async function notify(title: string, body: string): Promise<void> {
   const electronAPI = (window as any).electronAPI;
   if (electronAPI?.isElectron) {
