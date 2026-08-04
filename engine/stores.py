@@ -22,9 +22,6 @@ from crypto_box import SecretBox, default_box
 
 T = TypeVar("T", bound=BaseModel)
 
-# Where secrets live inside each stored model, as dotted paths from the model
-# root. Kept declarative so adding a secret-bearing field is a one-line change
-# here rather than bespoke logic in three call sites.
 _SECRET_PATHS: dict[str, tuple[str, ...]] = {
     "credential_profiles": ("password", "totp_secret"),
     "job_templates": ("request.auth.password", "request.auth.totp_secret", "request.auth.cookies_raw"),
