@@ -8,7 +8,7 @@ from auth.tokens import read_local_token, resolve_api_token
 def test_configured_token_wins(tmp_path: Path):
     token_file = tmp_path / ".pagecap_token"
     assert resolve_api_token("explicit", token_file, True) == "explicit"
-    assert not token_file.exists()  # nothing generated when one was supplied
+    assert not token_file.exists()
 
 
 def test_generates_and_persists_when_none_supplied(tmp_path: Path):

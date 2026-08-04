@@ -28,7 +28,7 @@ class _FakeClient:
     """Minimal stand-in for httpx.AsyncClient.stream() used by download_with_retry."""
 
     def __init__(self, responses):
-        self._responses = list(responses)  # list of _FakeStream, consumed in order
+        self._responses = list(responses)
 
     def stream(self, method, url, headers=None):
         return self._responses.pop(0)
@@ -41,7 +41,7 @@ async def test_download_with_retry_success(tmp_path: Path):
     assert result is not None
     assert result.bytes_written == len(b"hello world")
     assert dest.read_bytes() == b"hello world"
-    assert len(result.sha256) == 64  # hex sha256
+    assert len(result.sha256) == 64
 
 
 async def test_download_with_retry_below_min_size_fails(tmp_path: Path):

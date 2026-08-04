@@ -42,10 +42,8 @@ async def test_evictable_respects_ttl(store: JobStore):
     job = JobState(job_id="abc", url="https://example.com", status=JobStatus.done)
     await store.save(job)
 
-    # Not expired yet with a generous TTL.
     assert await store.evictable_job_ids(ttl_seconds=3600) == []
 
-    # Any TTL in the past means it's evictable.
     assert await store.evictable_job_ids(ttl_seconds=-1) == ["abc"]
 
 
@@ -56,8 +54,6 @@ async def test_evictable_excludes_active_status(store: JobStore):
 
 
 async def test_evictable_excludes_paused_status(store: JobStore):
-    # Regression: a paused job must never be swept up by TTL eviction just
-    # because it's sitting idle — pausing is a user action, not abandonment.
     job = JobState(job_id="abc", url="https://example.com", status=JobStatus.paused)
     await store.save(job)
     assert await store.evictable_job_ids(ttl_seconds=-1) == []

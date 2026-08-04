@@ -79,8 +79,6 @@ async def test_get_missing_returns_none(db_stores):
     assert await credentials.get("does-not-exist") is None
 
 
-# ── Encryption at rest ──────────────────────────────────────────────────────
-
 async def test_credential_secrets_are_encrypted_on_disk(db_stores, db_path):
     credentials, _templates, _schedules = db_stores
     await credentials.save(
@@ -94,7 +92,7 @@ async def test_credential_secrets_are_encrypted_on_disk(db_stores, db_path):
     raw = _raw_rows(db_path, "credential_profiles")
     assert "pl41nt3xt" not in raw
     assert "JBSWY3DPEHPK3PXP" not in raw
-    assert "alice" in raw  # non-secret fields stay queryable/readable
+    assert "alice" in raw
     assert raw.count("enc:v1:") == 2
 
 
