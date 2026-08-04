@@ -25,7 +25,7 @@ _USERNAME_SELECTORS = [
     'input[type="text"][name*="email"]',
     'input[type="text"][id*="user"]',
     'input[type="text"][id*="email"]',
-    'input[type="text"]',  # last resort
+    'input[type="text"]',
 ]
 
 _PASSWORD_SELECTORS = [
@@ -81,7 +81,6 @@ async def apply_credentials(
 
     if not username_field or not password_field:
         if manual_captcha:
-            # No standard form found — let user navigate manually
             if on_captcha_detected:
                 on_captcha_detected("Formulário de login não encontrado. Faça login manualmente no browser.")
             await _wait_for_navigation(page, captcha_timeout)
@@ -111,8 +110,6 @@ async def apply_credentials(
     except Exception:
         pass
 
-    # Detect CAPTCHA / 2FA challenges on resulting page via DOM selectors
-    # (avoid full-page text scan which produces false positives from page copy/scripts)
     _challenge_selectors = [
         "iframe[src*='recaptcha']", "iframe[src*='hcaptcha']",
         ".g-recaptcha", ".h-captcha",
@@ -121,10 +118,6 @@ async def apply_credentials(
     ]
     has_challenge = any(await page.query_selector(sel) for sel in _challenge_selectors)
 
-    # If the challenge is specifically a TOTP field and we have a secret,
-    # compute the current code ourselves instead of pausing for a human —
-    # this is the only 2FA factor that's purely algorithmic (no external
-    # push/SMS to wait on), so it's safe to automate.
     if has_challenge and totp_secret:
         otp_field = await _find_first(page, _OTP_SELECTORS)
         if otp_field:
@@ -136,14 +129,13 @@ async def apply_credentials(
                 await page.wait_for_load_state("networkidle", timeout=15000)
                 has_challenge = any(await page.query_selector(sel) for sel in _challenge_selectors)
             except Exception:
-                pass  # fall through to manual_captcha handling below if it's still unresolved
+                pass
 
     if has_challenge and manual_captcha:
         if on_captcha_detected:
             on_captcha_detected(
                 "CAPTCHA ou 2FA detectado. Resolva no browser e aguarde continuar automaticamente."
             )
-        # Wait until user passes the challenge (URL or DOM changes away from challenge)
         await _wait_for_challenge_done(page, captcha_timeout)
 
     return True

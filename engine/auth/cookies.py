@@ -52,7 +52,6 @@ def _parse_raw_cookies(raw: str, domain: str) -> list[dict]:
     raw = raw.strip()
 
     if raw.startswith("#") or "\t" in raw:
-        # Netscape format
         for line in raw.splitlines():
             line = line.strip()
             if not line or line.startswith("#"):
@@ -69,7 +68,6 @@ def _parse_raw_cookies(raw: str, domain: str) -> list[dict]:
                     "sameSite": "None",
                 })
     else:
-        # key=value; key2=value2 (HTTP header style)
         for pair in raw.split(";"):
             pair = pair.strip()
             if "=" in pair:
@@ -95,9 +93,6 @@ async def load_cookies(
 ) -> int:
     """Add cookies to a Playwright context. Returns number of cookies added."""
     parsed = urlparse(url)
-    # netloc may include a port and a leading "www." — strip both safely.
-    # NB: str.lstrip("www.") strips *characters*, not the prefix, so it would
-    # corrupt domains like "world.com" → "orld.com". Remove the prefix explicitly.
     domain = parsed.netloc.split("@")[-1].split(":")[0]
     if domain.startswith("www."):
         domain = domain[len("www."):]
