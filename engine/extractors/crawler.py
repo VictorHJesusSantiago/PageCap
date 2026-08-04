@@ -60,9 +60,6 @@ from paywall import detect_paywall
 
 log = get_logger("crawler")
 
-# Live resume events, keyed by job id. The API mutates `job.status` to pause or
-# resume, but only this registry lets it *wake* a waiting crawl immediately
-# instead of the crawl noticing on its next poll.
 _RESUME_EVENTS: dict[str, asyncio.Event] = {}
 
 
@@ -73,12 +70,11 @@ def signal_resume(job_id: str) -> None:
         event.set()
 
 
-# Map ContentType → file_types categories
 _CT_TO_CATEGORIES: dict[str, set[str]] = {
     "all":       {"text", "spreadsheet", "presentation", "image", "vector", "audio", "video",
                   "font", "subtitle", "data", "code", "archive", "executable", "certificate",
                   "ml", "3d", "config"},
-    "page_pdf":  set(),          # handled separately
+    "page_pdf":  set(),
     "images":    {"image", "vector"},
     "videos":    {"video"},
     "audio":     {"audio"},
@@ -99,27 +95,21 @@ class CrawlContext:
     output_dir: Path
     on_progress: Optional[Callable[[JobState], None]] = None
 
-    # Browser handles, populated once the Playwright context is up.
     browser_context: object = None
     page: object = None
     pw_cookies: list[dict] = field(default_factory=list)
 
-    # Accumulated results
     files: list[ExtractedFile] = field(default_factory=list)
     seen_filenames: set[str] = field(default_factory=set)
     seen_hashes: dict[str, str] = field(default_factory=dict)
     job_bytes_total: int = 0
 
-    # Derived request state
     want: set[str] = field(default_factory=set)
     wanted_categories: set[str] = field(default_factory=set)
     wanted_extensions: Optional[set[str]] = None
     blocked_domains: set[str] = field(default_factory=set)
     expected_hashes: dict[str, str] = field(default_factory=dict)
 
-    # Pause is an Event, not a polled flag: a resumed job continues on the next
-    # loop tick instead of up to a second later, and a cancelled job stops
-    # waiting immediately.
     resume_event: asyncio.Event = field(default_factory=asyncio.Event)
     _last_progress_emit: float = 0.0
 
@@ -165,7 +155,7 @@ class CrawlContext:
             try:
                 await asyncio.wait_for(self.resume_event.wait(), timeout=1.0)
             except asyncio.TimeoutError:
-                continue  # re-check status; the API mutates it out-of-band
+                continue
 
     def add(self, f: ExtractedFile) -> None:
         """The single funnel every extracted file passes through: dedupe by
@@ -186,11 +176,6 @@ class CrawlContext:
                 self._discard(f)
                 return
 
-        # max_job_size_bytes is a budget for bytes *on disk*, so it only applies
-        # to files that were actually downloaded. A metadata_only run populates
-        # size_bytes from a HEAD request while local_path stays None — charging
-        # those against the budget silently truncated the listing the user asked
-        # for, even though nothing was written.
         if self.request.max_job_size_bytes and f.size_bytes and f.local_path:
             if self.job_bytes_total + f.size_bytes > self.request.max_job_size_bytes:
                 self._discard(f)
@@ -200,8 +185,6 @@ class CrawlContext:
         if self.request.dedupe_by_hash and f.content_hash:
             kept_as = self.seen_hashes.get(f.content_hash)
             if kept_as is not None:
-                # Same bytes already saved under a different name/URL — drop
-                # this copy instead of wasting disk space on a duplicate.
                 self._discard(f)
                 f.local_path = None
                 f.duplicate_of = kept_as
@@ -231,12 +214,8 @@ StageFn = Callable[[CrawlContext], Awaitable[None]]
 class _Stage:
     name: str
     run: StageFn
-    # Stages that only make sense for audio/video skip themselves entirely when
-    # the caller asked for something else.
     requires_media: bool = False
 
-
-# ── Individual stages ───────────────────────────────────────────────────────
 
 async def _stage_page_pdf(ctx: CrawlContext) -> None:
     if not (ctx.want_all or ContentType.page_pdf.value in ctx.want):
@@ -246,8 +225,6 @@ async def _stage_page_pdf(ctx: CrawlContext) -> None:
         ctx.add(f)
         ctx.emit(f"PDF: {f.filename}", 18)
 
-    # PDF.js/blob-based viewers render into a blob: URL that a normal HTTP
-    # fetch can never see — recover it from inside the page instead.
     async for f in extract_pdf_blobs(
         ctx.page, ctx.request.url, ctx.output_dir, already_seen=set(ctx.seen_filenames)
     ):
@@ -365,7 +342,6 @@ async def _stage_plugins(ctx: CrawlContext) -> None:
                 ctx.add(f)
                 ctx.emit(f"Plugin {plugin_name}: {f.filename}", -1)
         except Exception as e:
-            # A misbehaving third-party plugin must never fail the job.
             ctx.emit(f"Plugin {plugin_name} falhou: {e}", -1)
             log.warning(
                 "Plugin failed",
@@ -387,8 +363,6 @@ async def _stage_screen_record(ctx: CrawlContext) -> None:
         ctx.emit(f"Gravação: {f.filename}", 90)
 
 
-# The pipeline. Order matters (most specific strategy first); everything else
-# about a stage is declared, not coded.
 _BROWSER_STAGES: tuple[_Stage, ...] = (
     _Stage("page_pdf", _stage_page_pdf),
     _Stage("ytdlp", _stage_ytdlp, requires_media=True),
@@ -438,8 +412,6 @@ async def _run_stage(stage: _Stage, ctx: CrawlContext) -> None:
             }},
         )
 
-
-# ── Post-processing (no browser needed) ─────────────────────────────────────
 
 async def _post_convert(ctx: CrawlContext) -> None:
     """`convert_to` is a global "convert everything" shortcut; `convert_rules`
@@ -533,15 +505,10 @@ _POST_STAGES: tuple[_Stage, ...] = (
 )
 
 
-# ── Entry point ─────────────────────────────────────────────────────────────
-
 async def crawl_assets(
     request: ExtractionRequest,
     job: JobState,
     on_progress: Optional[Callable[[JobState], None]] = None,
-    # (url, current_job_id) -> most recent prior *done* JobState for that URL,
-    # or None. Used to compute job.diff. Only api.py wires this up (it has the
-    # JobStore); the CLI runs without persistence so diffing is simply skipped.
     find_previous_job: Optional[Callable[[str, str], Awaitable[Optional[JobState]]]] = None,
 ) -> list[ExtractedFile]:
     """Main entry point. Runs all applicable extractors and returns all files
@@ -600,8 +567,6 @@ async def _run_pipeline(
             for stage in _BROWSER_STAGES:
                 await _run_stage(stage, ctx)
         finally:
-            # Always close the browser, including on cancellation — otherwise a
-            # cancelled job leaves an orphaned Chromium process behind.
             await browser.close()
 
     for stage in _POST_STAGES:
@@ -675,7 +640,6 @@ async def _authenticate(ctx: CrawlContext) -> None:
         ctx.job.status = JobStatus.running
         ctx.emit("Login concluído" if success else "Formulário não encontrado; continuando", 10)
     except Exception as e:
-        # Never log the credentials themselves, only that the attempt failed.
         log.warning("Login attempt failed", extra={"extra_fields": {"error": str(e)}})
         ctx.emit(f"Erro no login: {e}", 10)
 
@@ -701,7 +665,7 @@ async def _prepare_page(ctx: CrawlContext) -> None:
             )
             await page.wait_for_selector(ctx.request.wait_selector, timeout=15000)
         except Exception:
-            pass  # best-effort — extractors below still navigate/wait on their own
+            pass
 
 
 async def _post_diff(
@@ -715,7 +679,7 @@ async def _post_diff(
         if previous:
             ctx.job.diff = compute_diff(previous, ctx.files)
     except Exception:
-        pass  # diffing is a convenience, never fatal to the job
+        pass
 
 
 async def _post_webhook(ctx: CrawlContext) -> None:
@@ -733,7 +697,6 @@ async def _post_webhook(ctx: CrawlContext) -> None:
                 headers={"Content-Type": "application/json"},
             )
     except Exception as e:
-        # Best-effort — a broken webhook must never fail the job.
         log.warning("Webhook delivery failed", extra={"extra_fields": {"error": str(e)}})
 
 
@@ -765,16 +728,11 @@ def _zip_job_output_sync(output_dir: Path, files: list[ExtractedFile]) -> Path:
     written: set[str] = set()
     with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
         for f in files:
-            # Prefer the converted file when one exists, mirroring what a user
-            # would want in a single "give me everything" archive.
             path = Path(f.converted_path) if f.converted_path else (
                 Path(f.local_path) if f.local_path else None
             )
             if not path or not path.exists() or path == zip_path:
                 continue
-            # Two files from different subdirectories can share a basename;
-            # writing both under the same arcname silently produced a zip with
-            # duplicate entries where most tools only extract the last one.
             arcname = path.name
             if arcname in written:
                 stem, suffix = Path(arcname).stem, Path(arcname).suffix
@@ -799,7 +757,7 @@ async def _crawl_additional_pages(ctx: CrawlContext) -> AsyncGenerator[Extracted
     request = ctx.request
     context = ctx.browser_context
     visited: set[str] = {request.url}
-    queue: list[tuple[str, int]] = []  # (url, depth)
+    queue: list[tuple[str, int]] = []
 
     def _enqueue(url: str, depth: int) -> None:
         parsed = urlparse(url)
@@ -810,10 +768,6 @@ async def _crawl_additional_pages(ctx: CrawlContext) -> AsyncGenerator[Extracted
         visited.add(url)
         queue.append((url, depth))
 
-    # Explicit batch of extra seed pages — always honored regardless of
-    # follow_links/use_sitemap, and never expanded further for links (depth is
-    # set past max_depth so the follow_links branch below won't chain off them
-    # unless the caller also wants that; treat them like first-class start pages).
     for extra_url in request.additional_urls:
         _enqueue(extra_url, 1)
 
@@ -835,7 +789,7 @@ async def _crawl_additional_pages(ctx: CrawlContext) -> AsyncGenerator[Extracted
         finally:
             await disc_page.close()
 
-    pages_visited = 1  # the start URL was already crawled by the caller
+    pages_visited = 1
     while queue and pages_visited < request.max_pages and len(ctx.files) < request.max_files:
         if ctx.cancelled():
             return

@@ -19,18 +19,12 @@ from utils import unique_filename, build_cookie_header
 from download import download_with_retry, run_bounded
 
 
-# Extensions we actively scan for beyond the other extractors
 _AUDIO_EXTS = {".mp3", ".wav", ".ogg", ".flac", ".aac", ".m4a", ".opus", ".weba"}
 _VIDEO_EXTS = {".mp4", ".webm", ".mkv", ".avi", ".mov", ".m4v", ".ogv", ".ts", ".m3u8"}
 _ALL_EXTS = _AUDIO_EXTS | _VIDEO_EXTS
 
-# When a <video>/<audio> offers the same content in multiple codecs via
-# sibling <source type="..."> tags (the standard HTML fallback pattern), we
-# only want ONE of them — downloading every codec variant of the same clip
-# wastes bandwidth/disk for no benefit. Lower index = more broadly playable /
-# preferred; unlisted codecs sort last but are still downloaded as a fallback.
 _CODEC_PRIORITY = [
-    "video/mp4", "audio/mpeg", "audio/mp4",       # near-universal support
+    "video/mp4", "audio/mpeg", "audio/mp4",
     "video/webm", "audio/ogg", "audio/webm",
     "video/ogg",
 ]
@@ -69,7 +63,6 @@ async def extract_generic_media(
 
     media_urls: set[str] = set()
 
-    # <audio src> and <video src>
     for tag in ["audio", "video"]:
         els = await page.query_selector_all(tag)
         for el in els:
@@ -77,9 +70,6 @@ async def extract_generic_media(
             if src:
                 media_urls.add(urljoin(url, src))
 
-    # <source src type="..."> — when a <video>/<audio> lists several codec
-    # variants of the same clip via sibling <source> tags, pick the single
-    # best-supported codec instead of downloading every variant.
     for parent_tag in ["video", "audio"]:
         parents = await page.query_selector_all(parent_tag)
         for parent in parents:
@@ -95,8 +85,6 @@ async def extract_generic_media(
                 candidates.sort(key=lambda c: c[0])
                 media_urls.add(candidates[0][1])
 
-    # <source src> not inside a <video>/<audio> parent (malformed/loose markup) —
-    # fall back to grabbing all of them since there's no group to pick a "best" from.
     loose_sources = await page.query_selector_all(
         "source[src]:not(video source, audio source)"
     )
@@ -105,7 +93,6 @@ async def extract_generic_media(
         if src:
             media_urls.add(urljoin(url, src))
 
-    # <a href> pointing to media files
     links = await page.query_selector_all("a[href]")
     for el in links:
         href = await el.get_attribute("href")
@@ -115,10 +102,6 @@ async def extract_generic_media(
             if ext in _ALL_EXTS:
                 media_urls.add(full)
 
-    # Filter by wanted types. The scheme check is not redundant with the
-    # request-level validator: these URLs come from page markup, so a
-    # `<video src="file:///etc/passwd">` resolves to a file: URL here even
-    # though the *page* URL was http(s). Only real remote resources are fetched.
     filtered: set[str] = set()
     for mu in media_urls:
         if urlparse(mu).scheme not in ("http", "https"):
