@@ -25,9 +25,6 @@ log = get_logger("errors")
 
 PROBLEM_CONTENT_TYPE = "application/problem+json"
 
-# Stable, dereferenceable-looking type URIs. They are identifiers first and
-# documentation anchors second — never change one without a version bump, since
-# clients are expected to branch on them instead of on the status code alone.
 _TYPE_BASE = "https://pagecap.local/problems"
 
 _TITLES: dict[int, str] = {
@@ -114,8 +111,6 @@ def install(app: FastAPI) -> None:
 
     @app.exception_handler(RequestValidationError)
     async def _validation_error(request: Request, exc: RequestValidationError):
-        # Surface *which* fields failed. `errors()` can contain non-JSON-native
-        # values (e.g. ValueError instances) so it is normalised to strings.
         errors = [
             {
                 "field": ".".join(str(p) for p in err.get("loc", ())),
@@ -134,10 +129,6 @@ def install(app: FastAPI) -> None:
 
     @app.exception_handler(Exception)
     async def _unhandled(request: Request, exc: Exception):
-        # Log the traceback server-side; return no internals to the caller.
-        # A stack trace in the response body is an information leak (A05) even
-        # on a local API, because the response is readable cross-origin by
-        # anything CORS lets through.
         log.exception(
             "Unhandled exception",
             extra={"extra_fields": {"path": request.url.path, "error": str(exc)}},

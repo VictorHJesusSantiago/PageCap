@@ -57,9 +57,6 @@ def load_plugins() -> list[tuple[str, PluginExtractor]]:
                     extra={"extra_fields": {"plugin": py_file.name}},
                 )
         except Exception as e:
-            # An import error in one plugin must not hide the others, but it
-            # must be visible: silently skipping is how a typo'd plugin
-            # "mysteriously stops running".
             log.error(
                 "Plugin failed to import",
                 extra={"extra_fields": {"plugin": py_file.name, "error": str(e)}},
