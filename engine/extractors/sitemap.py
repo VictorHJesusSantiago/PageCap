@@ -30,7 +30,6 @@ def _parse_locs(xml_text: str) -> tuple[list[str], list[str]]:
     tag = root.tag.rsplit("}", 1)[-1]
     locs = [el.text.strip() for el in root.findall(".//sm:loc", _NS) if el.text]
     if not locs:
-        # tolerate sitemaps served without the namespace declared
         locs = [el.text.strip() for el in root.findall(".//loc") if el.text]
 
     if tag == "sitemapindex":
@@ -49,7 +48,6 @@ async def discover_sitemap_urls(base_url: str, max_urls: int = 200) -> list[str]
     async with httpx.AsyncClient(follow_redirects=True) as client:
         text = await _fetch(client, f"{root_url}/sitemap.xml")
         if text is None:
-            # fall back to robots.txt's "Sitemap:" directive
             robots = await _fetch(client, f"{root_url}/robots.txt")
             if robots:
                 for line in robots.splitlines():
@@ -64,7 +62,7 @@ async def discover_sitemap_urls(base_url: str, max_urls: int = 200) -> list[str]
         pages, nested = _parse_locs(text)
         urls.extend(pages)
 
-        for nested_url in nested[:5]:  # cap nested sitemap fan-out
+        for nested_url in nested[:5]:
             if len(urls) >= max_urls:
                 break
             nested_text = await _fetch(client, nested_url)

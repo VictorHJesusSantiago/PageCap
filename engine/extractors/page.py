@@ -23,7 +23,6 @@ async def extract_page_pdf(
 
     await page.goto(url, wait_until="networkidle", timeout=60000)
 
-    # Scroll to trigger lazy-loaded content
     await _scroll_full_page(page)
     await asyncio.sleep(1)
 

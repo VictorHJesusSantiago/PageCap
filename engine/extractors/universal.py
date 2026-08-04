@@ -23,19 +23,6 @@ from extractors.links import auto_scroll
 from download import download_with_retry, run_bounded, sort_by_priority
 import security
 
-# Recursively walks the light DOM *and* every open shadow root, collecting
-# resolved URLs from the same attribute list Python-side code cares about.
-# Playwright's query_selector_all("*") cannot see into shadow trees at all,
-# so web-component-heavy sites (many design systems, video players) silently
-# hid their media without this — closed shadow roots remain unreachable by
-# design (the browser gives no API for that), same as a real user's browser.
-#
-# This is also the *only* DOM collector now. The previous Python-side loop
-# (query_selector_all("*") then `await el.get_attribute(attr)` for each of 22
-# attributes) issued one CDP round-trip per attribute per element — on a page
-# with 3,000 elements that is 66,000 sequential round-trips, minutes of wall
-# clock for work the browser does in milliseconds. Everything happens in-page
-# in a single evaluate() now.
 _SHADOW_URLS_JS = r"""
 (urlAttrs) => {
   const urls = new Set();
@@ -73,10 +60,6 @@ _SHADOW_URLS_JS = r"""
 }
 """
 
-# Pulls url(...) references out of every loaded stylesheet: background-image
-# and other CSS background/mask/border-image properties, plus @font-face src.
-# Runs in-page so it sees computed/relative stylesheets (including same-origin
-# imported ones) without us having to fetch and parse CSS ourselves.
 _CSS_URLS_JS = r"""
 () => {
   const urls = new Set();
@@ -100,14 +83,12 @@ _CSS_URLS_JS = r"""
 }
 """
 
-# HTML attributes that commonly contain resource URLs
 _URL_ATTRS = [
     "src", "href", "data-src", "data-href", "data-url", "data-original",
     "data-lazy", "data-full", "data-download", "content", "action",
     "poster", "longdesc", "cite", "srcset", "data-srcset",
 ]
 
-# Skip these URL patterns (tracking, analytics, tiny resources)
 _SKIP_PATTERNS = [
     r"google-analytics\.com", r"googletagmanager\.com",
     r"facebook\.com/tr", r"pixel\.", r"beacon\.",
@@ -115,7 +96,7 @@ _SKIP_PATTERNS = [
 ]
 _SKIP_RE = re.compile("|".join(_SKIP_PATTERNS), re.IGNORECASE)
 
-_MIN_SIZE = 512  # bytes — skip empty/stub responses
+_MIN_SIZE = 512
 
 
 async def extract_universal(
@@ -168,8 +149,7 @@ async def extract_universal(
     blocked_domains = blocked_domains or set()
     expected_hashes = expected_hashes or {}
 
-    # Intercept responses in parallel
-    intercepted: dict[str, str] = {}  # url → content-type
+    intercepted: dict[str, str] = {}
 
     async def _on_response(response):
         ct = response.headers.get("content-type", "")
@@ -177,7 +157,6 @@ async def extract_universal(
         if any(ext in response_url.lower() for ext in ALL_EXTENSIONS):
             intercepted[response_url] = ct
         else:
-            # Check by MIME
             mime_base = ct.split(";")[0].strip().lower()
             info = get_info(mime_base)
             if info:
@@ -194,7 +173,7 @@ async def extract_universal(
         try:
             await page.wait_for_selector(wait_selector, timeout=15000)
         except Exception:
-            pass  # best-effort — proceed with whatever loaded
+            pass
 
     if click_selector and click_max_times > 0:
         for _ in range(click_max_times):
@@ -213,21 +192,14 @@ async def extract_universal(
     await asyncio.sleep(3)
     page.remove_listener("response", _on_response)
 
-    # ── Collect URLs from DOM (main frame + every nested iframe) ─────────────
-    # Two evaluate() calls per frame — one for markup attributes (including
-    # open shadow roots), one for stylesheet url() references. Both run
-    # entirely in-page and return already-resolved absolute URLs.
     dom_urls: set[str] = set()
 
     async def _collect_from_frame(frame, frame_url: str) -> None:
         try:
             dom_urls.update(await frame.evaluate(_SHADOW_URLS_JS, _URL_ATTRS))
         except Exception:
-            pass  # detached/cross-origin frame we can't introspect
+            pass
 
-        # CSS background-image / mask-image / border-image / @font-face src.
-        # These come back as authored (possibly relative) so they still need
-        # joining against the frame's own URL.
         try:
             for u in await frame.evaluate(_CSS_URLS_JS):
                 dom_urls.add(urljoin(frame_url, u))
@@ -237,24 +209,19 @@ async def extract_universal(
     for frame in page.frames:
         await _collect_from_frame(frame, frame.url or url)
 
-    # ── Merge DOM + intercepted ───────────────────────────────────────────────
     all_candidate_urls: set[str] = dom_urls | set(intercepted.keys())
 
-    # ── Filter by extension or category ─────────────────────────────────────
     def _should_download(candidate: str) -> bool:
         parsed = urlparse(candidate)
-        # Only fetch real remote resources — never data:/blob:/file:/etc.
         if parsed.scheme not in ("http", "https"):
             return False
         if blocked_domains and parsed.netloc in blocked_domains:
             return False
         if _SKIP_RE.search(candidate):
             return False
-        # Strip query strings from path for extension detection
         path = parsed.path.split("?")[0]
         ext = Path(path).suffix.lower()
 
-        # Multi-part extensions (.tar.gz, .tar.bz2, etc.)
         for multi in (".tar.gz", ".tar.bz2", ".tar.xz"):
             if path.endswith(multi):
                 ext = multi
@@ -263,7 +230,6 @@ async def extract_universal(
         if ext in ALL_EXTENSIONS:
             info = get_info(ext)
         else:
-            # Unknown/absent extension — fall back to the intercepted MIME type.
             ct = intercepted.get(candidate, "")
             mime_base = ct.split(";")[0].strip() if ct else ""
             info = get_info(mime_base) if mime_base else None
@@ -282,18 +248,13 @@ async def extract_universal(
 
     candidates = [u for u in all_candidate_urls if _should_download(u)][:max_files]
 
-    # ── Download (bounded concurrency + retry/backoff) ────────────────────────
     headers: dict[str, str] = {"Referer": url}
     if cookies:
         headers["Cookie"] = build_cookie_header(cookies)
 
     seen_filenames: set[str] = set(already_seen)
 
-    # Filenames must be allocated up front, synchronously, before any download
-    # task starts — unique_filename() itself has no await points, so doing the
-    # allocation here (rather than inside the concurrent coroutines) guarantees
-    # two in-flight downloads never race for the same destination path.
-    jobs: list[tuple[str, str, Path]] = []  # (candidate, filename, dest)
+    jobs: list[tuple[str, str, Path]] = []
     for candidate in candidates:
         path_no_qs = urlparse(candidate).path.split("?")[0]
         ext = Path(path_no_qs).suffix.lower()

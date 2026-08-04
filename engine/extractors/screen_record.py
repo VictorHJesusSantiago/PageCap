@@ -28,7 +28,6 @@ from playwright.async_api import Page, BrowserContext
 
 from models import ExtractedFile
 
-# Below this the capture is a header and a black frame or two — not a recording.
 _MIN_RECORDING_BYTES = 10_000
 
 
@@ -40,7 +39,7 @@ def _ffmpeg_input_args() -> list[str]:
     """Return platform-specific ffmpeg screen capture input arguments."""
     system = platform.system()
     if system == "Linux":
-        display = ":99"  # Xvfb display
+        display = ":99"
         return [
             "-f", "x11grab",
             "-video_size", "1280x900",
@@ -55,14 +54,14 @@ def _ffmpeg_input_args() -> list[str]:
             "-framerate", "30",
             "-i", "desktop",
             "-f", "dshow",
-            "-i", "audio=virtual-audio-capturer",   # requires VB-Cable or similar
+            "-i", "audio=virtual-audio-capturer",
         ]
-    elif system == "Darwin":  # macOS
+    elif system == "Darwin":
         return [
             "-f", "avfoundation",
             "-framerate", "30",
             "-capture_cursor", "0",
-            "-i", "1:0",   # screen:audio — adjust device indices if needed
+            "-i", "1:0",
         ]
     else:
         return ["-f", "x11grab", "-video_size", "1280x900", "-framerate", "30", "-i", ":0"]
@@ -102,13 +101,11 @@ async def extract_screen_record(
         str(dest),
     ]
 
-    # Navigate first, wait for page to settle
     try:
         await page.goto(url, wait_until="networkidle", timeout=60000)
     except Exception:
         pass
 
-    # Try to auto-play (click play buttons if found)
     for sel in ['button[aria-label*="play" i]', 'button[class*="play" i]', '[data-testid*="play" i]', ".play-button", "#play-button"]:
         try:
             el = await page.query_selector(sel)
@@ -120,7 +117,6 @@ async def extract_screen_record(
 
     await asyncio.sleep(wait_before)
 
-    # Start recording
     proc = await asyncio.create_subprocess_exec(
         *cmd,
         stdout=asyncio.subprocess.DEVNULL,
