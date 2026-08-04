@@ -13,7 +13,6 @@ from pathlib import Path
 _AUDIO_EXTS = {".mp3", ".wav", ".ogg", ".flac", ".aac", ".m4a", ".wma", ".opus", ".aiff", ".aif"}
 _VIDEO_EXTS = {".mp4", ".mkv", ".avi", ".mov", ".wmv", ".flv", ".webm", ".ogv", ".3gp", ".ts", ".m2ts", ".vob", ".rm", ".rmvb"}
 
-# ffmpeg codec recommendations per output format
 _VCODEC: dict[str, str] = {
     ".mp4": "libx264", ".mkv": "libx264", ".avi": "libxvid",
     ".mov": "libx264", ".wmv": "wmv2", ".webm": "libvpx-vp9",
@@ -48,7 +47,6 @@ async def convert_media(src: Path, target_ext: str, quality: str = "medium") -> 
     cmd = ["ffmpeg", "-y", "-i", str(src)]
 
     if is_audio_target:
-        # Audio-only extraction / conversion
         acodec = _ACODEC.get(target_ext, "copy")
         cmd += ["-vn", "-c:a", acodec]
         if target_ext == ".mp3":
@@ -66,7 +64,6 @@ async def convert_media(src: Path, target_ext: str, quality: str = "medium") -> 
             q = {"low": "3", "medium": "5", "high": "7", "lossless": "10"}.get(quality, "5")
             cmd += ["-q:a", q]
     else:
-        # Video conversion
         vcodec = _VCODEC.get(target_ext, "libx264")
         cmd += ["-c:v", vcodec]
 

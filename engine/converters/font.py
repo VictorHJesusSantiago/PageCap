@@ -21,7 +21,6 @@ async def convert_font(src: Path, target_ext: str) -> Path:
     dest = src.with_suffix(target_ext)
 
     if src_ext == ".woff2":
-        # Decompress WOFF2 → TTF first
         tmp_ttf = src.with_suffix(".tmp.ttf")
         with open(src, "rb") as f_in, open(tmp_ttf, "wb") as f_out:
             woff2_decompress(f_in, f_out)
@@ -40,7 +39,6 @@ async def convert_font(src: Path, target_ext: str) -> Path:
         font.flavor = None
         font.save(str(dest))
     elif target_ext == ".eot":
-        # EOT requires a dedicated tool; use ttf2eot if available
         import shutil, asyncio
         if not shutil.which("ttf2eot"):
             raise RuntimeError("ttf2eot não encontrado. Instale-o para gerar EOT.")
@@ -53,7 +51,6 @@ async def convert_font(src: Path, target_ext: str) -> Path:
     else:
         raise ValueError(f"Conversão de fonte para {target_ext} não suportada")
 
-    # Clean up temp file if created
     tmp = src.parent / (src.stem.replace(".tmp", "") + ".tmp.ttf")
     if tmp.exists():
         tmp.unlink(missing_ok=True)

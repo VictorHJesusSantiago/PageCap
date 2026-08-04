@@ -21,7 +21,6 @@ _SVG_EXTS  = {".svg"}
 _RAW_EXTS  = {".raw", ".cr2", ".nef", ".arw", ".dng", ".orf", ".rw2"}
 _PS_EXTS   = {".eps", ".ai", ".ps", ".psd", ".xcf", ".wmf", ".emf", ".sketch"}
 
-# Pillow format names
 _PIL_FMT: dict[str, str] = {
     ".jpg": "JPEG", ".jpeg": "JPEG",
     ".png": "PNG", ".gif": "GIF", ".bmp": "BMP",
@@ -47,35 +46,27 @@ async def convert_image(src: Path, target_ext: str) -> Path:
     dest = src.with_suffix(target_ext)
     target_ext = target_ext.lower()
 
-    # ── GIF → video ───────────────────────────────────────────────────────────
     if src_ext == ".gif" and target_ext in (".mp4", ".webm"):
         return await _gif_to_video(src, dest, target_ext)
 
-    # ── SVG → raster / pdf ────────────────────────────────────────────────────
     if src_ext == ".svg":
         return await _svg_convert(src, dest, target_ext)
 
-    # ── HEIC/HEIF → any ───────────────────────────────────────────────────────
     if src_ext in _HEIC_EXTS:
         return await _heic_convert(src, dest, target_ext)
 
-    # ── AVIF → any ────────────────────────────────────────────────────────────
     if src_ext in _AVIF_EXTS or target_ext in _AVIF_EXTS:
         return await _avif_convert(src, dest, target_ext)
 
-    # ── RAW → any ─────────────────────────────────────────────────────────────
     if src_ext in _RAW_EXTS:
         return await _raw_convert(src, dest, target_ext)
 
-    # ── Exotic (PSD, XCF, EPS, WMF) → via ImageMagick ────────────────────────
     if src_ext in _PS_EXTS:
         return await _magick_convert(src, dest)
 
-    # ── Standard raster via Pillow ────────────────────────────────────────────
     if src_ext in _PIL_EXTS or target_ext in _PIL_EXTS:
         return await _pillow_convert(src, dest, target_ext)
 
-    # Final fallback: ImageMagick
     return await _magick_convert(src, dest)
 
 

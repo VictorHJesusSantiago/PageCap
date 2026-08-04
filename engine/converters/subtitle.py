@@ -19,9 +19,8 @@ async def convert_subtitle(src: Path, target_ext: str) -> Path:
         _pysubs2_save(subs, dest, target_ext)
         return dest
     except ImportError:
-        pass  # fallback below
+        pass
 
-    # Manual SRT ↔ VTT fallback (no dependency)
     text = src.read_text(encoding="utf-8", errors="replace")
 
     if src_ext == ".srt" and target_ext == ".vtt":
@@ -60,15 +59,11 @@ def _vtt_to_srt(vtt: str) -> str:
     i = 0
     while i < len(lines):
         line = lines[i].strip()
-        # Detect timestamp line
         if "-->" in line:
-            # Add counter
             srt_lines.append(str(counter))
             counter += 1
-            # Convert timestamps
             srt_lines.append(re.sub(r"(\d{2}:\d{2}:\d{2})\.(\d{3})", r"\1,\2", line))
             i += 1
-            # Collect text lines
             while i < len(lines) and lines[i].strip():
                 srt_lines.append(lines[i].rstrip())
                 i += 1
