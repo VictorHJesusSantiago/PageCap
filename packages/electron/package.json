@@ -47,6 +47,7 @@
           "!pagecap.db-wal",
           "!pagecap.db-shm",
           "!.pagecap_key",
+          "!.pagecap_token",
           "!.env"
         ]
       }

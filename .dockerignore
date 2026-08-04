@@ -6,6 +6,7 @@ engine/pagecap.db
 engine/pagecap.db-wal
 engine/pagecap.db-shm
 engine/.pagecap_key
+engine/.pagecap_token
 .env
 engine/__pycache__
 engine/**/__pycache__
