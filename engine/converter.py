@@ -18,10 +18,6 @@ class ConversionError(Exception):
 ConverterFn = Callable[[Path, str], Awaitable[Path]]
 
 
-# Converter name → loader. Imports stay lazy (pandas, Pillow and fonttools are
-# heavy and most jobs convert nothing) but the dispatch is now a lookup rather
-# than an if/elif ladder that had to be edited in two places — the category map
-# and the chain — every time a converter was added.
 def _load_document() -> ConverterFn:
     from converters.document import convert_document
     return convert_document
@@ -61,11 +57,10 @@ _CONVERTER_LOADERS: dict[str, Callable[[], ConverterFn]] = {
     "subtitle": _load_subtitle,
 }
 
-# Category → converter name
 _CATEGORY_CONVERTER: dict[str, str] = {
     "text":         "document",
     "spreadsheet":  "data",
-    "presentation": "document",    # pandoc handles pptx → pdf etc.
+    "presentation": "document",
     "image":        "image",
     "vector":       "image",
     "audio":        "media",
@@ -73,12 +68,10 @@ _CATEGORY_CONVERTER: dict[str, str] = {
     "font":         "font",
     "subtitle":     "subtitle",
     "data":         "data",
-    "code":         "document",    # highlight → html/pdf via pandoc
+    "code":         "document",
     "config":       "document",
 }
 
-# Every category must route to a converter that exists. Checked at import so a
-# typo is a startup failure, not a runtime surprise on one user's odd file.
 assert set(_CATEGORY_CONVERTER.values()) <= set(_CONVERTER_LOADERS), (
     "_CATEGORY_CONVERTER references an unknown converter: "
     f"{set(_CATEGORY_CONVERTER.values()) - set(_CONVERTER_LOADERS)}"
@@ -103,8 +96,6 @@ async def convert_file(
     if src_ext == target_ext:
         return src
 
-    # Validate that this conversion is registered.
-    # An empty allowed list means the type declares no conversions — always reject.
     allowed = conversions_for(src_ext)
     if target_ext not in allowed:
         supported = ', '.join(allowed) if allowed else "nenhum"
@@ -128,7 +119,6 @@ async def convert_file(
     except Exception as e:
         raise ConversionError(f"Conversão falhou ({src.name} → {target_ext}): {e}") from e
 
-    # Move to output_dir if specified
     if output_dir and dest.parent != output_dir:
         final = output_dir / dest.name
         dest.rename(final)

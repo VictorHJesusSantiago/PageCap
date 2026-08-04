@@ -54,7 +54,6 @@ class SecretBox:
         self._key_path = key_path
         self._key: Optional[bytes] = None
 
-    # ── key management ──────────────────────────────────────────────────────
     def _load_key(self) -> Optional[bytes]:
         if self._key is not None:
             return self._key
@@ -77,15 +76,12 @@ class SecretBox:
             self._key_path.parent.mkdir(parents=True, exist_ok=True)
             self._key_path.write_bytes(base64.urlsafe_b64encode(key))
             try:
-                # Owner read/write only. No-op semantics on Windows, where the
-                # inherited directory ACL is what actually governs access.
                 self._key_path.chmod(stat.S_IRUSR | stat.S_IWUSR)
             except OSError:
                 pass
         self._key = key
         return key
 
-    # ── API ─────────────────────────────────────────────────────────────────
     def encrypt(self, plaintext: Optional[str]) -> Optional[str]:
         if plaintext is None or plaintext == "" or plaintext.startswith(_PREFIX):
             return plaintext
@@ -102,7 +98,7 @@ class SecretBox:
 
     def decrypt(self, value: Optional[str]) -> Optional[str]:
         if value is None or not value.startswith(_PREFIX):
-            return value  # legacy plaintext row, or nothing to do
+            return value
         if not _AVAILABLE:
             log.error("Encrypted secret found but cryptography is not installed")
             return None
@@ -111,8 +107,6 @@ class SecretBox:
             key = self._load_key()
             return AESGCM(key).decrypt(blob[:_NONCE_BYTES], blob[_NONCE_BYTES:], None).decode("utf-8")
         except Exception:
-            # Wrong key or tampered ciphertext. Fail closed: the caller sees a
-            # missing credential rather than a corrupted one it might submit.
             log.error("Failed to decrypt a stored secret (wrong key or tampered data)")
             return None
 

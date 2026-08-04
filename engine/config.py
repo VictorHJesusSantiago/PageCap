@@ -42,25 +42,21 @@ def _int(name: str, default: int) -> int:
 
 @dataclass(frozen=True)
 class Settings:
-    # ── Storage ─────────────────────────────────────────────────────────────
     db_path: Path
     downloads_dir: Path
     job_ttl_seconds: float
     eviction_interval_seconds: float
     persist_interval_seconds: float
 
-    # ── Security ────────────────────────────────────────────────────────────
     api_token: Optional[str]
     require_auth: bool
     allow_null_origin: bool
     extra_cors_origins: tuple[str, ...]
     rate_limit_per_minute: int
 
-    # ── Scheduler / shutdown ────────────────────────────────────────────────
     scheduler_interval_seconds: float
     shutdown_drain_seconds: float
 
-    # ── Extensibility / observability ───────────────────────────────────────
     plugins_dir: Optional[Path]
     log_level: str
 
@@ -86,15 +82,11 @@ def load() -> Settings:
         eviction_interval_seconds=_float("PAGECAP_EVICTION_INTERVAL_SECONDS", 3600),
         persist_interval_seconds=_float("PAGECAP_PERSIST_INTERVAL_SECONDS", 2.0),
         api_token=os.getenv("PAGECAP_API_TOKEN") or None,
-        # Auth is ON by default. A token is generated and persisted on first
-        # run if none was supplied. PAGECAP_REQUIRE_AUTH=0 restores the old
-        # unauthenticated behaviour for one deprecation cycle — see
-        # docs/adr/ADR-001.
         require_auth=_flag("PAGECAP_REQUIRE_AUTH", True),
         allow_null_origin=_flag("PAGECAP_ALLOW_NULL_ORIGIN", False),
         extra_cors_origins=tuple(
             o for o in (p.strip() for p in os.getenv("PAGECAP_CORS_ORIGINS", "").split(","))
-            if o and o != "*"  # a bare wildcard would open CORS to every origin
+            if o and o != "*"
         ),
         rate_limit_per_minute=_int("PAGECAP_RATE_LIMIT_PER_MINUTE", 0),
         scheduler_interval_seconds=_float("PAGECAP_SCHEDULER_INTERVAL_SECONDS", 30),

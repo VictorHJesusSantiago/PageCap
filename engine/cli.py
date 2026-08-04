@@ -119,7 +119,6 @@ def extract(
 
     content_types = _parse_types(types)
 
-    # Auth config
     auth = AuthConfig()
     if manual_captcha:
         auth.manual_captcha = True
