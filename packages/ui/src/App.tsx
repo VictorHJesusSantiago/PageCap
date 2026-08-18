@@ -108,7 +108,7 @@ export default function App() {
       <footer className={styles.footer}>
         <span>PageCap v1.0</span>
         <span>·</span>
-        <span>API: <code>http://127.0.0.1:8765</code></span>
+        <span>API: <code>http:
         <span>·</span>
         <span>CLI: <code>python engine/cli.py --help</code></span>
       </footer>
