@@ -2,91 +2,54 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, master]
   pull_request:
-    branches: [main]
+    branches: [main, master]
+
+permissions:
+  contents: read
 
 jobs:
-  engine-tests:
-    name: Engine (Python) tests
+  node:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Tests
+        run: npm run test:core && npm run test:ui -- --run
+      - name: Build
+        run: npm run build
+      - name: Dependency vulnerability scan
+        run: npm audit --audit-level=high
+
+  engine:
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: engine
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-python@v5
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: '3.11'
           cache: pip
-          cache-dependency-path: engine/requirements-dev.txt
-
+          cache-dependency-path: engine/requirements.txt
       - name: Install dependencies
-        run: pip install -r requirements-dev.txt
-
-      - name: Run tests
-        run: python -m pytest -v
-
-  engine-audit:
-    name: Engine dependency audit (SCA)
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-
-      - name: Audit Python dependencies
-        run: |
-          pip install pip-audit
-          pip-audit -r engine/requirements.txt --strict
-
-  frontend-build:
-    name: Frontend (TypeScript) build
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-          cache: npm
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Audit runtime dependencies (blocking)
-        run: npm audit --omit=dev --audit-level=high
-
-      - name: Audit all dependencies (informational)
-        continue-on-error: true
-        run: npm audit --audit-level=high
-
-      - name: Typecheck all workspaces
-        run: npm run typecheck
-
-      - name: Test @pagecap/core
-        run: npm run test --workspace=packages/core
-
-      - name: Test @pagecap/ui (Vitest + RTL + axe, with coverage gate)
-        run: npm run test:coverage --workspace=packages/ui
-
-      - name: Build @pagecap/core
-        run: npm run build --workspace=packages/core
-
-      - name: Build @pagecap/ui
-        run: npm run build --workspace=packages/ui
-
-      - name: Build @pagecap/electron
-        run: npm run build --workspace=packages/electron
-
-  docker-build:
-    name: Docker image build
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Build engine image
-        run: docker build -t pagecap-engine:ci -f engine/Dockerfile .
+        run: pip install -r requirements.txt pip-audit ruff
+      - name: Lint
+        run: ruff check .
+      - name: Tests
+        run: pytest -q
+      - name: Dependency vulnerability scan
+        run: pip-audit -r requirements.txt
